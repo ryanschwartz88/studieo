@@ -1,109 +1,278 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# Studieo Platform
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+The platform application for Studieo - connecting elite student teams with companies for real-world projects.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## Getting Started
 
-## Features
+### Prerequisites
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Middleware
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- Node.js 18+ and pnpm
+- Supabase account and project
+- Resend account for email notifications
 
-## Demo
+### Environment Setup
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+Create a `.env.local` file in the `code/` directory:
 
-## Deploy to Vercel
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-Vercel deployment will guide you through creating a Supabase account and project.
+# Resend (for email notifications)
+RESEND_API_KEY=your_resend_api_key
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+# App URL
+NEXT_PUBLIC_URL=http://localhost:3000
+```
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+### Installation
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+```bash
+cd code
+pnpm install
+```
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+### Database Setup
 
-## Clone and run locally
+1. **Apply migrations** to your Supabase project:
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+```bash
+# Using Supabase CLI
+npx supabase db push
 
-2. Create a Next.js app using the Supabase Starter template npx command
+# Or manually apply migrations from supabase/migrations/ directory
+```
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+2. **Verify schema** using Supabase MCP or dashboard:
+   - Check that all tables exist (users, companies, student_profiles, projects, applications, team_members, saved_projects, allowed_school_domains)
+   - Verify RLS policies are enabled
+   - Check that storage buckets (resumes, design_docs) are created
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+3. **Seed university data** (if not already done by migration):
+   - The `allowed_school_domains` table should contain approved universities
+   - Check `supabase/migrations/20250101000000_add_allowed_school_domains.sql`
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+### Development Server
 
-3. Use `cd` to change into the app's directory
+```bash
+pnpm dev
+```
 
-   ```bash
-   cd with-supabase-app
-   ```
+Open [http://localhost:3000](http://localhost:3000) to view the platform.
 
-4. Rename `.env.example` to `.env.local` and update the following:
+**Note**: The root path redirects to https://www.studieo.com for non-authenticated users. Authenticated users are redirected based on their role (students to `/browse`, companies to `/dashboard`).
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+## Project Structure
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+```
+code/
+├── app/
+│   ├── (auth)/              # Authentication routes
+│   │   ├── login/
+│   │   ├── sign-up/
+│   │   ├── onboarding/
+│   │   └── forgot-password/
+│   ├── (student)/           # Student-only routes
+│   │   ├── browse/
+│   │   ├── dashboard/
+│   │   ├── applications/[id]/
+│   │   └── profile/
+│   ├── (company)/           # Company-only routes
+│   │   ├── dashboard/
+│   │   └── projects/
+│   │       ├── new/
+│   │       └── [id]/
+│   ├── layout.tsx           # Root layout with brand metadata
+│   ├── globals.css          # Global styles (Tailwind)
+│   └── page.tsx             # Landing redirect logic
+├── components/
+│   ├── ui/                  # shadcn primitives (auto-installed)
+│   ├── blocks/              # Aceternity blocks (auto-installed)
+│   ├── theme-switcher.tsx
+│   └── logout-button.tsx
+├── lib/
+│   ├── actions/             # Server actions for mutations
+│   ├── schemas/             # Zod validation schemas
+│   ├── email/               # Email templates (Resend)
+│   ├── supabase/            # Supabase client utilities
+│   │   ├── server.ts        # SSR client
+│   │   ├── client.ts        # CSR client
+│   │   └── middleware.ts    # Auth middleware
+│   └── utils.ts             # Shared utilities
+├── components.json          # shadcn + Aceternity config
+└── package.json
+```
 
-5. You can now run the Next.js local development server:
+## Development Guidelines
 
-   ```bash
-   npm run dev
-   ```
+### AGENTS.md Files
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+This project uses AGENTS.md files to guide AI agents and developers:
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+- **`/AGENTS.md`**: Global project overview and principles
+- **`/BRAND.md`**: Brand guidelines and design system
+- **`code/AGENTS.md`**: Frontend architecture and patterns
+- **`code/components/AGENTS.md`**: Component composition guidelines
+- **`supabase/AGENTS.md`**: Database schema, RLS, and backend logic
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+**Read these files before making changes** to understand the architecture and conventions.
 
-## Feedback and issues
+### Key Principles
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+1. **Speed Through Composition**: Build with prebuilt components from shadcn/ui and Aceternity, not custom components
+2. **Server Actions for Mutations**: All data writes go through `lib/actions/` server actions
+3. **RLS for Authorization**: Rely on Supabase RLS policies, not application-level checks
+4. **Minimal Custom Components**: Compose registry components directly in pages
 
-## More Supabase examples
+### Installing UI Components
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+Use shadcn MCP or CLI:
+
+```bash
+# Via CLI
+npx shadcn@latest add button card dialog tabs table
+
+# Via MCP (in Cursor)
+"install button and card from shadcn"
+"preview sidebar from Aceternity"
+```
+
+### Creating Server Actions
+
+```typescript
+// lib/actions/example.ts
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+
+export async function exampleAction(data: FormData) {
+  const supabase = await createClient();
+  
+  // RLS policies enforce authorization
+  const { error } = await supabase
+    .from('table_name')
+    .insert({ ... });
+  
+  if (error) throw error;
+  
+  revalidatePath('/path');
+  return { success: true };
+}
+```
+
+### Database Queries
+
+- **Reads**: Use `createClient()` from `@/lib/supabase/server` in server components
+- **Writes**: Always use server actions (never direct mutations in components)
+- **Client-side**: Use `createClient()` from `@/lib/supabase/client` only for real-time subscriptions
+
+### File Uploads
+
+Storage paths are enforced by RLS:
+- **Resumes**: `{user_id}/resume.pdf`
+- **Design Docs**: `{application_id}/design_doc.pdf`
+
+Always use signed URLs for file access.
+
+## Testing
+
+E2E tests with Playwright (via MCP):
+
+```bash
+# Install Playwright
+pnpm install @playwright/test
+
+# Run tests
+pnpm test:e2e
+```
+
+Use `data-testid` attributes for reliable selectors:
+
+```tsx
+<Button data-testid="submit-application">Submit</Button>
+```
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Connect your GitHub repository to Vercel
+2. Add environment variables in Vercel dashboard
+3. Deploy automatically on push to `main`
+
+### Environment Variables
+
+Ensure all variables from `.env.local` are set in your deployment environment:
+- Supabase URL and keys
+- Resend API key
+- Public URL
+
+## Common Tasks
+
+### Adding a New University
+
+1. Use Supabase dashboard or SQL editor:
+
+```sql
+INSERT INTO public.allowed_school_domains (domain, school_name)
+VALUES ('university.edu', 'University Name');
+```
+
+### Vetting a New Company
+
+1. Find the company in Supabase dashboard (`companies` table)
+2. Update fields: `sector`, `website`, `description`
+3. Company users can now see full functionality
+
+### Checking RLS Policies
+
+Use Supabase MCP:
+
+```
+"get security advisors for the database"
+```
+
+Or manually check RLS status:
+
+```sql
+SELECT schemaname, tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public';
+```
+
+## Troubleshooting
+
+### "User not found" errors
+- Check that `handle_new_user()` trigger is active
+- Verify user exists in both `auth.users` and `public.users`
+
+### RLS policy blocks legitimate access
+- Test policies using `auth.uid()` in SQL editor
+- Check that user's role matches the policy expectations
+
+### File upload fails
+- Verify storage bucket exists and has correct RLS policies
+- Check file path matches expected format (`{user_id}/...` or `{application_id}/...`)
+
+### Email notifications not sending
+- Verify `RESEND_API_KEY` is set
+- Check Resend dashboard for delivery status
+
+## Resources
+
+- **Design Doc**: See `/README.md` for complete product requirements
+- **Brand Guidelines**: See `/BRAND.md` for design system
+- **Supabase Docs**: https://supabase.com/docs
+- **shadcn/ui**: https://ui.shadcn.com
+- **Aceternity UI**: https://ui.aceternity.com
+- **Next.js Docs**: https://nextjs.org/docs
+
+## Support
+
+For questions or issues:
+- **Internal**: Check AGENTS.md files first
+- **Supabase**: Use Supabase MCP or documentation
+- **UI Components**: Search shadcn/Aceternity registries with MCP
