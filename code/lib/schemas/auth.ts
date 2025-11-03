@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-// Student sign-up: email validation only (profile completed in onboarding)
+// Student sign-up: basic info collected at sign-up (profile completed in onboarding)
 export const studentSignUpSchema = z.object({
+  name: z.string().min(2, 'Full name is required').max(100),
   email: z
     .string()
     .email('Invalid email address')
@@ -27,7 +28,8 @@ export const companySignUpSchema = z.object({
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number'),
-  name: z.string().min(2, 'Full name is required').max(100),
+  name: z.string().min(2, 'Your full name is required').max(100),
+  company_name: z.string().min(2, 'Company name is required').max(100),
   role: z.string().min(2, 'Your role at the company is required').max(100),
 });
 
@@ -67,8 +69,7 @@ export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 // Student onboarding (multi-step)
 export const studentOnboardingSchema = z.object({
   grad_date: z.date({
-    required_error: 'Graduation date is required',
-    invalid_type_error: 'Invalid date',
+    message: 'Graduation date is required',
   }),
   interests: z
     .array(z.string())

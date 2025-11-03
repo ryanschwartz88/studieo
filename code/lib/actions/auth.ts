@@ -84,7 +84,7 @@ export async function signUpStudent(formData: StudentSignUpInput) {
     };
   }
   
-  const { email, password } = result.data;
+  const { name, email, password } = result.data;
   
   // Validate email domain against allowed_school_domains
   const emailValidation = await validateStudentEmail(email);
@@ -92,11 +92,14 @@ export async function signUpStudent(formData: StudentSignUpInput) {
     return { success: false, error: emailValidation.error };
   }
   
-  // Create auth account (handle_new_user trigger creates user and student_profile)
+  // Create auth account with metadata (handle_new_user trigger creates user and student_profile)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      data: {
+        name,
+      },
       emailRedirectTo: `${process.env.NEXT_PUBLIC_URL}/auth/confirm`,
     },
   });
@@ -145,7 +148,7 @@ export async function signUpCompany(formData: CompanySignUpInput) {
     };
   }
   
-  const { email, password, name, role } = result.data;
+  const { email, password, name, company_name, role } = result.data;
   
   // Validate email is NOT a generic provider
   const emailValidation = validateCompanyEmail(email);
@@ -160,6 +163,7 @@ export async function signUpCompany(formData: CompanySignUpInput) {
     options: {
       data: {
         name,
+        company_name,
         role, // Role at company, not user role
       },
       emailRedirectTo: `${process.env.NEXT_PUBLIC_URL}/auth/confirm`,

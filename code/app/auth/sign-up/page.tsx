@@ -18,8 +18,10 @@ export default function SignUpPage() {
   const [studentError, setStudentError] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'student' | 'company'>('student');
+  const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
+  const [companyUserName, setCompanyUserName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyRole, setCompanyRole] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
@@ -52,11 +54,12 @@ export default function SignUpPage() {
     setStudentError(null);
 
     const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
     try {
-      const result = await signUpStudent({ email, password });
+      const result = await signUpStudent({ name, email, password });
       
       if (!result.success) {
         setStudentError(result.error || 'Failed to sign up');
@@ -84,10 +87,11 @@ export default function SignUpPage() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const name = formData.get('name') as string;
+    const company_name = formData.get('company_name') as string;
     const role = formData.get('role') as string;
 
     try {
-      const result = await signUpCompany({ email, password, name, role });
+      const result = await signUpCompany({ email, password, name, company_name, role });
       
       if (!result.success) {
         setCompanyError(result.error || 'Failed to sign up');
@@ -147,6 +151,22 @@ export default function SignUpPage() {
             {/* Student Sign Up */}
             <TabsContent value="student" className="space-y-4 mt-0 px-1">
             <form onSubmit={handleStudentSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="student-name">Full Name</Label>
+                <Input
+                  id="student-name"
+                  name="name"
+                  type="text"
+                  placeholder="Jane Smith"
+                  required
+                  disabled={loading}
+                  data-testid="student-name"
+                  className="h-11 rounded-xl"
+                  value={studentName}
+                  onChange={(e)=>setStudentName(e.target.value)}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="student-email">University Email</Label>
                 <Input
@@ -250,7 +270,7 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 className="w-full h-11 rounded-xl bg-black text-white hover:bg-black/90 disabled:opacity-50"
-                disabled={loading || !studentEmail || !studentPasswordValid}
+                disabled={loading || !studentName || !studentEmail || !studentPasswordValid}
                 data-testid="student-submit"
               >
                 {loading ? (
@@ -269,12 +289,28 @@ export default function SignUpPage() {
           <TabsContent value="company" className="space-y-4 mt-0 px-1">
             <form onSubmit={handleCompanySubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="company-name">Full Name</Label>
+                <Label htmlFor="company-user-name">Your Full Name</Label>
                 <Input
-                  id="company-name"
+                  id="company-user-name"
                   name="name"
                   type="text"
                   placeholder="Jane Smith"
+                  required
+                  disabled={loading}
+                  data-testid="company-user-name"
+                  className="h-11 rounded-xl"
+                  value={companyUserName}
+                  onChange={(e)=>setCompanyUserName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="company-name">Company Name</Label>
+                <Input
+                  id="company-name"
+                  name="company_name"
+                  type="text"
+                  placeholder="Google"
                   required
                   disabled={loading}
                   data-testid="company-name"
@@ -285,7 +321,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="company-role">Role at Company</Label>
+                <Label htmlFor="company-role">Your Role at Company</Label>
                 <Input
                   id="company-role"
                   name="role"
@@ -403,7 +439,7 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 className="w-full h-11 rounded-xl bg-black text-white hover:bg-black/90 disabled:opacity-50"
-                disabled={loading || !companyName || !companyRole || !companyEmail || !companyPasswordValid}
+                disabled={loading || !companyUserName || !companyName || !companyRole || !companyEmail || !companyPasswordValid}
                 data-testid="company-submit"
               >
                 {loading ? (

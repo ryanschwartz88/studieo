@@ -20,6 +20,7 @@
   },
   "registries": {
     "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
-    "@animate-ui": "https://animate-ui.com/r/{name}.json"
+    "@animate-ui": "https://animate-ui.com/r/{name}.json",
+    "@algolia": "https://sitesearch.algolia.com/r/{name}.json"
   }
 }
