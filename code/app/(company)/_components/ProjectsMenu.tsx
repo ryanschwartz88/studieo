@@ -44,7 +44,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "outline" |
   switch (status) {
     case "INCOMPLETE":
       return "secondary"
-    case "OPEN":
+    case "ACCEPTING":
       return "default"
     case "IN_PROGRESS":
       return "outline"

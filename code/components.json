@@ -21,6 +21,9 @@
   "registries": {
     "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
     "@animate-ui": "https://animate-ui.com/r/{name}.json",
-    "@algolia": "https://sitesearch.algolia.com/r/{name}.json"
+    "@algolia": "https://sitesearch.algolia.com/r/{name}.json",
+    "@blocks": "https://blocks.so/r/{name}.json",
+    "@react-bits": "https://reactbits.dev/r/{name}.json",
+    "@cult-ui": "https://cult-ui.com/r/{name}.json"
   }
 }

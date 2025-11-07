@@ -103,3 +103,36 @@ export const INTEREST_OPTIONS = [
   'Sales',
 ] as const;
 
+// Curated list of common skills for project requirements
+export const SUGGESTED_SKILLS = [
+  'UI/UX Design',
+  'Product Design',
+  'Graphic Design',
+  'Figma',
+  'Adobe Suite',
+  'Frontend Dev',
+  'Backend Dev',
+  'Full-Stack',
+  'Mobile Dev',
+  'React',
+  'Python',
+  'JavaScript',
+  'TypeScript',
+  'Data Analysis',
+  'Machine Learning',
+  'SQL',
+  'Market Research',
+  'User Research',
+  'A/B Testing',
+  'SEO',
+  'Content Writing',
+  'Copywriting',
+  'Social Media',
+  'Video Editing',
+  'Photography',
+  'Agile/Scrum',
+  'Business Analysis',
+  'Financial Modeling',
+  'Excel/Sheets',
+] as const;
+

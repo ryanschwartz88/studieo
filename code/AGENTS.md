@@ -118,7 +118,7 @@ export default async function DashboardPage() {
   const { data: projects } = await supabase
     .from('projects')
     .select('*')
-    .eq('status', 'OPEN');
+    .eq('status', 'ACCEPTING');
   
   return <ProjectList projects={projects} />;
 }
@@ -432,7 +432,7 @@ export async function getResumeUrl(userId: string) {
 ### 1. Student Project Browsing (`/browse`)
 
 **Requirements**:
-- Display all projects with status `OPEN`
+- Display all projects with status `ACCEPTING`
 - Search by title, company name
 - Filter by project_type, skills_needed, sector
 - Cards show: title, company name, summary, team_size, skills (badges)

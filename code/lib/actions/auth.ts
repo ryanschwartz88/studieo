@@ -47,7 +47,7 @@ async function validateStudentEmail(email: string): Promise<{ valid: boolean; er
 }
 
 /**
- * Validate if email domain is NOT a generic/free email provider
+ * Validate if email domain is NOT a generic/free email provider OR a .edu domain
  * Uses the free-email-domains package to check against a comprehensive list
  */
 function validateCompanyEmail(email: string): { valid: boolean; error?: string } {
@@ -55,6 +55,14 @@ function validateCompanyEmail(email: string): { valid: boolean; error?: string }
 
   if (!domain) {
     return { valid: false, error: 'Invalid email format' };
+  }
+
+  // Check if domain is a .edu domain (students should sign up as students)
+  if (domain.endsWith('.edu')) {
+    return {
+      valid: false,
+      error: 'University emails cannot be used for company accounts. Please sign up as a student instead.',
+    };
   }
 
   // Check if domain is a free/generic email provider
