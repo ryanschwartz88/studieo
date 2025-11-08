@@ -55,6 +55,19 @@ export async function createProject(
   }
   
   const validatedData = result.data;
+
+  // Conditional validation: open_date must be before start_date only for INCOMPLETE or SCHEDULED status
+  if ((status === 'INCOMPLETE' || status === 'SCHEDULED') && validatedData.open_date && validatedData.start_date) {
+    const maxOpenDate = new Date(validatedData.start_date);
+    maxOpenDate.setDate(maxOpenDate.getDate() - 1);
+    maxOpenDate.setHours(23, 59, 59, 999); // End of day
+    if (validatedData.open_date > maxOpenDate) {
+      return { 
+        success: false, 
+        error: 'Open date must be at most one day before project start date' 
+      };
+    }
+  }
   
   // Prepare project data for database
   const projectData = {
@@ -85,6 +98,7 @@ export async function createProject(
     collaboration_style: validatedData.collaboration_style,
     mentorship: validatedData.mentorship,
     confidentiality: validatedData.confidentiality,
+    location: validatedData.location || null,
   };
   
   // Insert project
@@ -205,7 +219,7 @@ export async function uploadResourceFiles(files: File[], projectId?: string) {
  */
 export async function updateProjectStatus(
   projectId: string,
-  status: 'INCOMPLETE' | 'SCHEDULED' | 'ACCEPTING' | 'IN_PROGRESS' | 'COMPLETED',
+  status: 'INCOMPLETE' | 'SCHEDULED' | 'ACCEPTING' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED',
   openDate?: Date
 ) {
   const supabase = await createClient();
@@ -323,6 +337,63 @@ export async function getCompanyProjects() {
 }
 
 /**
+ * Archive project (set status to ARCHIVED)
+ */
+export async function archiveProject(projectId: string) {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+  
+  // Verify user has COMPANY role and project belongs to their company
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role, company_id')
+    .eq('id', user.id)
+    .single();
+  
+  if (userError || !userData || userData.role !== 'COMPANY' || !userData.company_id) {
+    return { success: false, error: 'Access denied' };
+  }
+  
+  // Verify project belongs to user's company
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('id, company_id, status')
+    .eq('id', projectId)
+    .single();
+  
+  if (projectError || !project) {
+    return { success: false, error: 'Project not found' };
+  }
+  
+  if (project.company_id !== userData.company_id) {
+    return { success: false, error: 'Access denied' };
+  }
+  
+  // Update status to ARCHIVED
+  const { error: updateError } = await supabase
+    .from('projects')
+    .update({ 
+      status: 'ARCHIVED',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', projectId);
+  
+  if (updateError) {
+    console.error('Archive error:', updateError);
+    return { success: false, error: 'Failed to archive project' };
+  }
+  
+  revalidatePath('/dashboard');
+  revalidatePath(`/projects/${projectId}`);
+  
+  return { success: true, message: 'Project archived successfully' };
+}
+
+/**
  * Delete project (soft delete by setting status to cancelled)
  */
 export async function deleteProject(projectId: string) {
@@ -410,6 +481,19 @@ export async function updateProjectFull(
   }
   const data = parsed.data;
 
+  // Conditional validation: open_date must be before start_date only for INCOMPLETE or SCHEDULED status
+  if ((proj.status === 'INCOMPLETE' || proj.status === 'SCHEDULED') && data.open_date && data.start_date) {
+    const maxOpenDate = new Date(data.start_date);
+    maxOpenDate.setDate(maxOpenDate.getDate() - 1);
+    maxOpenDate.setHours(23, 59, 59, 999); // End of day
+    if (data.open_date > maxOpenDate) {
+      return { 
+        success: false, 
+        error: 'Open date must be at most one day before project start date' 
+      };
+    }
+  }
+
   let nextStatus: (typeof PROJECT_STATUS)[number] = 'INCOMPLETE';
   if (opts?.draft) {
     // Draft mode: only allowed if project is currently INCOMPLETE
@@ -481,6 +565,7 @@ export async function updateProjectFull(
     mentorship: data.mentorship,
     confidentiality: data.confidentiality,
     internal_notes: data.internal_notes || null,
+    location: data.location || null,
     updated_at: new Date().toISOString(),
     status: nextStatus,
   };

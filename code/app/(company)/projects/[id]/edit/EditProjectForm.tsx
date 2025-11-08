@@ -84,6 +84,7 @@ export default function EditProjectForm({ project }: { project: any }) {
   const [contactEmail, setContactEmail] = useState(project.contact_email || '')
   const [confidentiality, setConfidentiality] = useState(project.confidentiality || 'PUBLIC')
   const [internalNotes, setInternalNotes] = useState(project.internal_notes || '')
+  const [location, setLocation] = useState(project.location || '')
 
   function toggleProjectType(type: string) {
     if (projectTypes.includes(type)) {
@@ -211,6 +212,7 @@ export default function EditProjectForm({ project }: { project: any }) {
           resource_links: resourceLinks || undefined,
           resource_files: allFileUrls,
           internal_notes: internalNotes || undefined,
+          location: location || undefined,
           contact_name: contactName,
           contact_role: contactRole,
           contact_email: contactEmail,
@@ -265,6 +267,7 @@ export default function EditProjectForm({ project }: { project: any }) {
           resource_links: resourceLinks || undefined,
           resource_files: allFileUrls,
           internal_notes: internalNotes || undefined,
+          location: location || undefined,
           contact_name: contactName,
           contact_role: contactRole,
           contact_email: contactEmail,
@@ -617,6 +620,22 @@ export default function EditProjectForm({ project }: { project: any }) {
             </Select>
           </div>
         </div>
+
+        {(collaborationStyle === 'Hybrid' || collaborationStyle === 'In-person') && (
+          <div>
+            <Label htmlFor="location">Project Location *</Label>
+            <Input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="San Francisco, CA"
+              className="mt-2 h-11"
+              maxLength={100}
+              required
+            />
+            <p className="text-xs text-muted-foreground mt-1">{location.length}/100 characters</p>
+          </div>
+        )}
       </div>
 
       <Separator />
@@ -749,7 +768,8 @@ export default function EditProjectForm({ project }: { project: any }) {
                   const dateToCheck = new Date(date)
                   dateToCheck.setHours(0, 0, 0, 0)
                   if (dateToCheck < today) return true
-                  if (startDate) {
+                  // Only enforce start_date constraint for INCOMPLETE or SCHEDULED status
+                  if ((project.status === 'INCOMPLETE' || project.status === 'SCHEDULED') && startDate) {
                     const maxDate = new Date(startDate)
                     maxDate.setDate(maxDate.getDate() - 1)
                     maxDate.setHours(0, 0, 0, 0)

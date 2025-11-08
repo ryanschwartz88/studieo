@@ -1,9 +1,10 @@
 import { requireAuth, requireRole } from '@/lib/supabase/auth-helpers';
 import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarRail, SidebarGroup } from '@/components/ui/sidebar';
-import { Settings, Plus, ChevronsUpDown, LogOut, Search } from 'lucide-react';
+import { ChevronsUpDown, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { ProjectsMenu } from './_components/ProjectsMenu';
+import { NavigationButtons } from './_components/NavigationButtons';
 import { ThemeSwitcher } from './_components/ThemeSwitcher';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -51,6 +52,7 @@ export default async function CompanyLayout({
         .from('projects')
         .select('id, title, status, created_by_id')
         .eq('company_id', userData.company_id)
+        .neq('status', 'ARCHIVED')
         .order('updated_at', { ascending: false });
       
       projects = data ?? [];
@@ -114,26 +116,7 @@ export default async function CompanyLayout({
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Browse">
-                  <Link href="/browse">
-                    <Search />
-                    <span>Browse</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Add Project">
-                  <Link href="/projects/new" data-testid="add-project">
-                    <Plus />
-                    <span>Add Project</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup>
+          <NavigationButtons />
           <ProjectsMenu projects={projects} pendingCounts={pendingCounts} />
         </SidebarContent>
         <SidebarFooter>
@@ -185,8 +168,8 @@ export default async function CompanyLayout({
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+      <SidebarInset className="bg-background">
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-background border-b">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />

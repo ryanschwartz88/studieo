@@ -48,8 +48,10 @@ export function CompanyBreadcrumbs({ companyName }: CompanyBreadcrumbsProps) {
     if (pathname === '/settings') return { main: 'Settings' };
     if (pathname === '/projects/new') return { main: 'New Project' };
     if (projectId) {
+      const isEditPage = pathname.includes('/edit');
       return { 
         main: projectTitle || 'Loading...',
+        sub: isEditPage ? 'Edit' : undefined,
       };
     }
     return { main: 'Overview' };
@@ -67,6 +69,14 @@ export function CompanyBreadcrumbs({ companyName }: CompanyBreadcrumbsProps) {
         <BreadcrumbItem>
           <BreadcrumbPage>{pageInfo.main}</BreadcrumbPage>
         </BreadcrumbItem>
+        {pageInfo.sub && (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{pageInfo.sub}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        )}
       </BreadcrumbList>
     </Breadcrumb>
   );

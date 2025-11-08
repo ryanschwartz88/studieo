@@ -31,6 +31,7 @@ export const PROJECT_STATUS = [
   'ACCEPTING',
   'IN_PROGRESS',
   'COMPLETED',
+  'ARCHIVED',
 ] as const;
 
 // Project access type enum (matches DB)
@@ -91,6 +92,7 @@ export const createProjectSchema = z.object({
     .max(10, 'Select up to 10 skills'),
   collaboration_style: z.enum(COLLABORATION_STYLES),
   mentorship: z.enum(MENTORSHIP_OPTIONS),
+  location: z.string().max(100, 'Location must be under 100 characters').optional(),
 
   // Step 5: Timeline & Resources
   start_date: z.date({ message: 'Start date is required' }),
@@ -124,18 +126,17 @@ export const createProjectSchema = z.object({
     path: ['end_date'],
   })
   .refine((data) => {
-    if (data.open_date && data.start_date) {
-      // Open date must be at most one day before start date
-      const maxOpenDate = new Date(data.start_date);
-      maxOpenDate.setDate(maxOpenDate.getDate() - 1);
-      maxOpenDate.setHours(23, 59, 59, 999); // End of day
-      return data.open_date <= maxOpenDate;
+    // Location is required if collaboration style is Hybrid or In-person
+    if ((data.collaboration_style === 'Hybrid' || data.collaboration_style === 'In-person') && !data.location?.trim()) {
+      return false;
     }
     return true;
   }, {
-    message: 'Open date must be at most one day before project start date',
-    path: ['open_date'],
+    message: 'Location is required for Hybrid or In-person collaboration',
+    path: ['location'],
   });
+   // Note: open_date validation is handled conditionally in server actions
+   // based on project status (only for INCOMPLETE or SCHEDULED)
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 

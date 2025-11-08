@@ -8,9 +8,10 @@ interface SkillsCollapsibleProps {
   skills: string[] | null
   collaborationStyle: string | null
   mentorship: string | null
+  location?: string | null
 }
 
-export function SkillsCollapsible({ skills, collaborationStyle, mentorship }: SkillsCollapsibleProps) {
+export function SkillsCollapsible({ skills, collaborationStyle, mentorship, location }: SkillsCollapsibleProps) {
   const skillsList = skills || []
   const hasMoreThanSix = skillsList.length > 6
 
@@ -41,6 +42,9 @@ export function SkillsCollapsible({ skills, collaborationStyle, mentorship }: Sk
       <div className="flex flex-wrap gap-3">
         {collaborationStyle && (
           <Badge variant="outline">{collaborationStyle}</Badge>
+        )}
+        {location && (
+          <Badge variant="outline">{location}</Badge>
         )}
         {mentorship && (
           <Badge variant="outline">Mentorship: {mentorship}</Badge>

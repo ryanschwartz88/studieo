@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { BentoGrid, BentoGridItem } from '@/components/ui/bento-grid'
 import { ProjectStats } from './_components/ProjectStats'
 import { ProjectEditToolbar } from './_components/ProjectEditToolbar'
 import { ResourceLinks } from './_components/ResourceLinks'
 import { ResourceFiles } from './_components/ResourceFiles'
 import { BentoModalItem } from './_components/BentoModalItem'
-import { SkillsCollapsible } from './_components/SkillsCollapsible'
-import { CalendarIcon, Users, Target, Shield, Link as LinkIcon, FileText } from 'lucide-react'
+import { CalendarIcon, Users, Target, Shield, Link as LinkIcon, FileText, Brain } from 'lucide-react'
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>
@@ -39,6 +40,7 @@ type Project = {
   status: string | null
   company_id: string | null
   internal_notes: string | null
+  location: string | null
 }
 
 function formatDate(d: string | null | undefined) {
@@ -99,7 +101,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         'max_teams','skills_needed','collaboration_style',
         'mentorship','start_date','end_date','resource_links','resource_files',
         'contact_name','contact_role','contact_email','confidentiality','status','company_id',
-        'internal_notes',
+        'internal_notes','location',
       ].join(',')
     )
     .eq('id', id)
@@ -137,6 +139,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     )
   }
 
+  // If project is archived, redirect to dashboard
+  if (project.status === 'ARCHIVED') {
+    redirect('/dashboard')
+  }
+
   // Application counts
   const [{ count: totalApplicants }, { count: toReview }, { count: accepted }, { count: rejected }] = await Promise.all([
     supabase.from('applications').select('*', { count: 'exact', head: true }).eq('project_id', id),
@@ -164,7 +171,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             }}
           />
           {project.status && (
-            <Badge variant="secondary" className="uppercase tracking-wide">{project.status}</Badge>
+            <StatusBadge status={project.status as any} className="uppercase tracking-wide" />
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -198,9 +205,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             {project.detailed_description || 'No description provided.'}
           </p>
         </BentoModalItem>
-
+        
         {/* Details (Fixed: simple grid without nested Cards) */}
-        <BentoGridItem className="md:col-span-2" icon={<Users className="h-4 w-4" />} title="Details" header={
+        <BentoModalItem className="md:col-span-2" icon={<Users className="h-4 w-4" />} title="Details">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {/* Team Size */}
             <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md">
@@ -221,18 +228,18 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             </div>
 
             {/* Timeline */}
-            <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md">
+            <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md min-h-[120px]">
               <div className="text-xs text-muted-foreground mb-1">Timeline</div>
               <div className="text-lg font-medium">
                     <div className="inline-flex cursor-default items-center gap-2">
                       <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDate(project.start_date)} → {formatDate(project.end_date)}</span>
+                      <span>{formatDate(project.start_date)} to {formatDate(project.end_date)}</span>
                     </div>
               </div>
             </div>
 
             {/* Access */}
-            <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md">
+            <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md min-h-[120px]">
               <div className="text-xs text-muted-foreground mb-1">Access</div>
               <div className="text-lg font-medium">
                 {project.access_type
@@ -241,17 +248,37 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               </div>
             </div>
 
-            {/* Skills & Collaboration */}
-            <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md sm:col-span-2 lg:col-span-1">
-              <div className="text-xs text-muted-foreground mb-2">Skills & Collaboration</div>
-              <SkillsCollapsible 
-                skills={project.skills_needed}
-                collaborationStyle={project.collaboration_style}
-                mentorship={project.mentorship}
-              />
+            {/* Collaboration */}
+            <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md min-h-[120px]">
+              <div className="text-xs text-muted-foreground mb-2">Collaboration</div>
+              <div className="flex flex-wrap gap-2">
+                {project.collaboration_style && (
+                  <Badge variant="outline">{project.collaboration_style}</Badge>
+                )}
+                {project.location && (
+                  <Badge variant="outline">{project.location}</Badge>
+                )}
+                {project.mentorship && (
+                  <Badge variant="outline">Mentorship: {project.mentorship}</Badge>
+                )}
+              </div>
             </div>
+
+            {/* Skills */}
+            {/* <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md col-span-1 sm:col-span-2 lg:col-span-3">
+              <div className="text-xs text-muted-foreground mb-2">Skills</div>
+              <div className="flex flex-wrap gap-2">
+                {(project.skills_needed || []).length > 0 ? (
+                  (project.skills_needed || []).map((skill) => (
+                    <Badge key={skill} variant="secondary">{skill}</Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">No skills specified</span>
+                )}
+              </div>
+            </div> */}
           </div>
-        } />
+        </BentoModalItem>
 
         {/* Deliverables */}
         <BentoModalItem 
@@ -316,6 +343,23 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </div>
         </BentoModalItem>
       </BentoGrid>
+
+      {/* Skills */}
+      <BentoModalItem
+        className="md:max-h-[12rem]"
+        icon={<Brain className="h-4 w-4" />}
+        title="Skills"
+      >
+        <div className="flex flex-wrap gap-2">
+          {(project.skills_needed || []).length > 0 ? (
+            (project.skills_needed || []).map((skill) => (
+              <Badge key={skill} variant="secondary">{skill}</Badge>
+            ))
+          ) : (
+            <span className="text-sm text-muted-foreground">No skills specified</span>
+          )}
+        </div>
+      </BentoModalItem>
     </div>
   )
 }

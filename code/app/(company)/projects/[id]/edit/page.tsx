@@ -30,6 +30,11 @@ export default async function ProjectEditPage({ params }: PageProps) {
     redirect('/projects/' + id)
   }
 
+  // If project is archived, redirect to dashboard
+  if (project.status === 'ARCHIVED') {
+    redirect('/dashboard')
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-6">Edit Project</h1>

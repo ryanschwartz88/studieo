@@ -138,6 +138,7 @@ export default function NewProjectPage() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [resourceFiles, setResourceFiles] = useState<File[]>([]);
   const [resourceLinks, setResourceLinks] = useState('');
+  const [location, setLocation] = useState('');
 
   // Scheduling
   const [openDate, setOpenDate] = useState<Date | undefined>(undefined);
@@ -442,6 +443,7 @@ export default function NewProjectPage() {
         resource_links: resourceLinks || undefined,
         resource_files: uploadedFileUrls,
         internal_notes: internalNotes || undefined,
+        location: location || undefined,
         contact_name: contactName,
         contact_role: contactRole,
         contact_email: contactEmail,
@@ -1115,6 +1117,22 @@ export default function NewProjectPage() {
                     </div>
                   </RadioGroup>
                 </div>
+
+                {(collaborationStyle === 'Hybrid' || collaborationStyle === 'In-person') && (
+                  <div>
+                    <Label htmlFor="location">Project Location *</Label>
+                    <Input
+                      id="location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="San Francisco, CA"
+                      className="mt-2 h-11"
+                      maxLength={100}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">{location.length}/100 characters</p>
+                  </div>
+                )}
 
                 <div>
                   <Label>Mentorship</Label>
