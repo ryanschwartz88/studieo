@@ -8,6 +8,7 @@ import { ProjectEditToolbar } from './_components/ProjectEditToolbar'
 import { ResourceLinks } from './_components/ResourceLinks'
 import { ResourceFiles } from './_components/ResourceFiles'
 import { BentoModalItem } from './_components/BentoModalItem'
+import { ViewTracker } from './_components/ViewTracker'
 import { CalendarIcon, Users, Target, Shield, Link as LinkIcon, FileText, Brain } from 'lucide-react'
 
 interface ProjectPageProps {
@@ -41,6 +42,8 @@ type Project = {
   company_id: string | null
   internal_notes: string | null
   location: string | null
+  view_count: number | null
+  created_by_id: string | null
 }
 
 function formatDate(d: string | null | undefined) {
@@ -101,7 +104,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         'max_teams','skills_needed','collaboration_style',
         'mentorship','start_date','end_date','resource_links','resource_files',
         'contact_name','contact_role','contact_email','confidentiality','status','company_id',
-        'internal_notes','location',
+        'internal_notes','location','view_count','created_by_id',
       ].join(',')
     )
     .eq('id', id)
@@ -152,24 +155,33 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     supabase.from('applications').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'REJECTED'),
   ])
 
-  const impressions = 0
+  const impressions = project.view_count ?? 0
+  
+  // Check if current user is the creator
+  const isCreator = project.created_by_id === user.id
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
+      {/* Track view */}
+      <ViewTracker projectId={id} />
+      
       {/* Hero */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold leading-tight flex-1">{project.title}</h1>
-          <ProjectEditToolbar
-            project={{
-              id: project.id,
-              title: project.title,
-              short_summary: project.short_summary,
-              detailed_description: project.detailed_description,
-              deliverables: project.deliverables,
-              resource_links: project.resource_links,
-            }}
-          />
+          {/* Only show edit button if user created this project */}
+          {isCreator && (
+            <ProjectEditToolbar
+              project={{
+                id: project.id,
+                title: project.title,
+                short_summary: project.short_summary,
+                detailed_description: project.detailed_description,
+                deliverables: project.deliverables,
+                resource_links: project.resource_links,
+              }}
+            />
+          )}
           {project.status && (
             <StatusBadge status={project.status as any} className="uppercase tracking-wide" />
           )}

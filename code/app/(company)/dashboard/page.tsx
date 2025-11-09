@@ -48,17 +48,19 @@ export default async function CompanyDashboardPage() {
     )
   }
 
-  // Fetch all company projects
+  // Fetch all company projects with view counts
   const { data: allProjects } = await supabase
     .from('projects')
-    .select('id, status')
+    .select('id, status, view_count')
     .eq('company_id', companyId)
 
   const projectIds = (allProjects || []).map((p) => p.id)
-  const totalProjects = allProjects?.length || 0
   const activeProjects = allProjects?.filter(
-    (p) => p.status === 'OPEN' || p.status === 'IN_PROGRESS'
+    (p) => p.status === 'ACCEPTING' || p.status === 'IN_PROGRESS'
   ).length || 0
+
+  // Calculate total views across all projects
+  const totalViews = allProjects?.reduce((sum, p) => sum + (p.view_count || 0), 0) || 0
 
   // Fetch all applications to company's projects
   let allApplications: any[] = []
@@ -73,6 +75,10 @@ export default async function CompanyDashboardPage() {
     allApplications = applications || []
     pendingApplications = applications?.filter((a) => a.status === 'SUBMITTED').length || 0
   }
+
+  // Calculate view-to-apply rate (percentage of views that resulted in applications)
+  const totalApplications = allApplications.length
+  const viewToApplyRate = totalViews > 0 ? (totalApplications / totalViews) * 100 : 0
 
   // Aggregate applications data for chart (last 90 days)
   const chartData = aggregateApplicationsByDate(allApplications, 90)
@@ -114,10 +120,10 @@ export default async function CompanyDashboardPage() {
   }
 
   const stats = {
-    totalProjects,
+    viewToApplyRate,
     activeProjects,
     pendingApplications,
-    totalViews: 0, // Placeholder for future implementation
+    totalViews,
   }
 
   return (

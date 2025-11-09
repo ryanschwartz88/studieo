@@ -7,7 +7,7 @@ import { ApplicationsChart, ChartDataPoint } from "./ApplicationsChart"
 import { NewApplicationsTable, NewApplication } from "./NewApplicationsTable"
 
 interface DashboardStats {
-  totalProjects: number
+  viewToApplyRate: number
   activeProjects: number
   pendingApplications: number
   totalViews: number
@@ -26,11 +26,13 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const statCards = [
     {
-      name: "Total Projects",
-      value: stats.totalProjects,
-      icon: FolderKanban,
-      description: "All your projects",
-      testId: "dashboard-stat-total-projects",
+      name: "View-to-Apply Rate",
+      value: stats.viewToApplyRate,
+      icon: Eye,
+      description: "Conversion percentage",
+      testId: "dashboard-stat-view-to-apply",
+      suffix: "%",
+      decimals: 1,
     },
     {
       name: "Active Projects",
@@ -49,7 +51,7 @@ export function DashboardClient({
     {
       name: "Total Views",
       value: stats.totalViews,
-      icon: Eye,
+      icon: FolderKanban,
       description: "Project impressions",
       testId: "dashboard-stat-total-views",
     },
@@ -75,13 +77,15 @@ export function DashboardClient({
                   <Icon className="h-4 w-4 text-muted-foreground/50 transition-colors group-hover:text-primary" />
                 </div>
                 <dd className="mt-2 flex items-baseline space-x-2.5">
-                  <span className="text-3xl font-semibold text-foreground tabular-nums">
+                  <span className="text-3xl font-semibold text-foreground tabular-nums flex items-baseline">
                     <AnimatedNumber
                       value={item.value}
                       mass={0.8}
                       stiffness={75}
                       damping={15}
+                      decimals={item.decimals ?? 0}
                     />
+                    {item.suffix && <span>{item.suffix}</span>}
                   </span>
                 </dd>
                 <p className="mt-1 text-xs text-muted-foreground">

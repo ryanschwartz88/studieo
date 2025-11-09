@@ -42,7 +42,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 grid place-items-center z-[100] p-4 overflow-y-auto">
+      <div className="fixed inset-0 grid place-items-center z-[100] p-4 overflow-y-auto" onClick={onClose}>
         <motion.div
           layoutId={`card-${layoutId}`}
           className="w-full max-w-3xl max-h-[90vh] my-auto flex flex-col bg-white dark:bg-neutral-900 sm:rounded-3xl rounded-xl overflow-hidden shadow-2xl"
@@ -50,6 +50,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}
           <button

@@ -47,7 +47,7 @@ export function NewApplicationsTable({ applications }: NewApplicationsTableProps
         <CardHeader>
           <CardTitle>New Applications</CardTitle>
           <CardDescription>
-            Recent applications waiting for your review
+            Recent applications you haven't reviewed yet
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,7 +69,7 @@ export function NewApplicationsTable({ applications }: NewApplicationsTableProps
       <CardHeader>
         <CardTitle>New Applications</CardTitle>
         <CardDescription>
-          Recent applications waiting for your review
+          Recent applications you haven't reviewed yet
         </CardDescription>
       </CardHeader>
       <CardContent>

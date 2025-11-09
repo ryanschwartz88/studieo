@@ -52,6 +52,7 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'updated_desc')
   const [showFilters, setShowFilters] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
 
   // Debounced URL updates for all filters
   useEffect(() => {
@@ -122,18 +123,27 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
   return (
     <div className="min-h-screen p-4 sm:p-6">
       {/* Top bar - Full width with filters */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-6 mb-6 border-b">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-6 mb-6 border-b pt-4 overflow-visible">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold">Browse</h1>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2">
+              <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2 hidden sm:flex">
                 <X className="h-4 w-4" />
                 Clear Filters
               </Button>
               <Button
                 variant="outline"
+                size="sm"
+                className="md:hidden gap-2"
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                {filtersExpanded ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+              <Button
+                variant="outline"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden hidden sm:flex"
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <SlidersHorizontal className="h-4 w-4" />
@@ -153,97 +163,111 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
             />
           </div>
 
-          {/* Filters row - Sleek with dividers */}
-          <div className="flex items-center h-10 divide-x divide-border dark:divide-neutral-700">
+          {/* Filters row - Labels above controls */}
+          <div className={`md:flex flex-col md:flex-row items-start gap-4 md:gap-4 md:divide-x md:divide-border dark:md:divide-neutral-700 transition-all duration-200 ${filtersExpanded ? 'flex max-h-[1000px] opacity-100 overflow-visible' : 'hidden md:flex max-h-0 md:max-h-none opacity-0 md:opacity-100 overflow-hidden md:overflow-visible'}`}>
             {/* Access filter */}
-            <div className="flex items-center gap-2 pr-4 group">
-              <Select value={accessFilter} onValueChange={(v) => setAccessFilter(v.toUpperCase())}>
-                <SelectTrigger className="h-10 min-w-[140px] border-none shadow-none focus:ring-0" data-testid="access-filter">
-                  <SelectValue placeholder="Access" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OPEN">Open access</SelectItem>
-                  <SelectItem value="CLOSED">Closed access</SelectItem>
-                </SelectContent>
-              </Select>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" 
-                    aria-label="Access info"
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 text-sm">
-                  <div className="space-y-2">
-                    <div className="font-semibold">Access types</div>
-                    <div><span className="font-medium">Open</span>: Any team can start without approval while capacity remains.</div>
-                    <div><span className="font-medium">Closed</span>: Company reviews and approves each application.</div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+            <div className="flex flex-col gap-1.5 w-full md:w-auto md:pr-4 group md:h-[52px]">
+              <Label className="text-xs font-medium text-muted-foreground h-4">Access Type</Label>
+              <div className="flex items-center gap-2 h-10">
+                <Select value={accessFilter} onValueChange={(v) => setAccessFilter(v.toUpperCase())}>
+                  <SelectTrigger className="h-10 w-full md:min-w-[140px] border-none shadow-none focus:ring-0" data-testid="access-filter">
+                    <SelectValue placeholder="Access" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">Open access</SelectItem>
+                    <SelectItem value="CLOSED">Closed access</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
+                      aria-label="Access info"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 text-sm">
+                    <div className="space-y-2">
+                      <div className="font-semibold">Access types</div>
+                      <div><span className="font-medium">Open</span>: Any team can start without approval while capacity remains.</div>
+                      <div><span className="font-medium">Closed</span>: Company reviews and approves each application.</div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             {/* Team size slider */}
-            <div className="flex items-center gap-3 px-4 group">
-              <div className="flex-1 min-w-[220px]">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                  <span>Min</span>
-                  <span>Max</span>
+            <div className="flex flex-col gap-1.5 w-full md:w-auto md:px-4 group md:h-[52px]">
+              <Label className="text-xs font-medium text-muted-foreground h-4">Team Size</Label>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:h-[30px]">
+                <div className="flex-1 w-full sm:min-w-[220px]">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                    <span>Min</span>
+                    <span>Max</span>
+                  </div>
+                  <Slider
+                    value={teamSizeRange}
+                    onValueChange={(value) => setTeamSizeRange(value as [number, number])}
+                    min={1}
+                    max={11}
+                    step={1}
+                    data-testid="team-size-slider"
+                  />
                 </div>
-                <Slider
-                  value={teamSizeRange}
-                  onValueChange={(value) => setTeamSizeRange(value as [number, number])}
-                  min={1}
-                  max={11}
-                  step={1}
-                  data-testid="team-size-slider"
-                />
-              </div>
-              <div className="text-sm font-medium whitespace-nowrap text-foreground dark:text-neutral-200">
-                {teamSizeRange[0]} - {teamSizeRange[1] === 11 ? '10+' : teamSizeRange[1]}
+                <div className="text-sm font-medium whitespace-nowrap text-foreground dark:text-neutral-200 self-center sm:self-auto">
+                  {teamSizeRange[0]} - {teamSizeRange[1] === 11 ? '10+' : teamSizeRange[1]}
+                </div>
               </div>
             </div>
 
             {/* Max teams */}
-            <div className="flex items-center gap-2 px-4">
-              <Label htmlFor="max-teams" className="text-sm whitespace-nowrap text-foreground dark:text-neutral-200">Max Teams:</Label>
-              <Input
-                id="max-teams"
-                type="number"
-                value={maxTeams}
-                onChange={(e) => setMaxTeams(e.target.value)}
-                disabled={unlimitedTeams}
-                className="w-14 h-8 border-none bg-muted/50 dark:bg-neutral-800/80 dark:border dark:border-neutral-700/50"
-                min="1"
-                data-testid="max-teams-input"
-              />
-              <div className="flex items-center gap-1.5">
-                <Switch
-                  id="unlimited"
-                  checked={unlimitedTeams}
-                  onCheckedChange={setUnlimitedTeams}
-                  data-testid="unlimited-switch"
+            <div className="flex flex-col gap-1.5 w-full md:w-auto md:px-4 md:h-[52px]">
+              <Label htmlFor="max-teams" className="text-xs font-medium text-muted-foreground h-4">Max Teams</Label>
+              <div className="flex items-center gap-2 h-10">
+                <Input
+                  id="max-teams"
+                  type="number"
+                  value={maxTeams}
+                  onChange={(e) => setMaxTeams(e.target.value)}
+                  disabled={unlimitedTeams}
+                  className="w-14 h-10 border-none bg-muted/50 dark:bg-neutral-800/80 dark:border dark:border-neutral-700/50"
+                  min="1"
+                  data-testid="max-teams-input"
                 />
-                <Label htmlFor="unlimited" className="text-sm cursor-pointer">Unlimited</Label>
+                <div className="flex items-center gap-1.5">
+                  <Switch
+                    id="unlimited"
+                    checked={unlimitedTeams}
+                    onCheckedChange={setUnlimitedTeams}
+                    data-testid="unlimited-switch"
+                  />
+                  <Label htmlFor="unlimited" className="text-sm cursor-pointer">Unlimited</Label>
+                </div>
               </div>
             </div>
 
             {/* Sort dropdown */}
-            <div className="pl-4 ml-auto">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-10 w-[160px] border-none shadow-none focus:ring-0" data-testid="sort-dropdown">
+            <div className="flex flex-col gap-1.5 w-full md:w-auto md:pl-4 md:ml-auto md:h-[52px]">
+              <Label className="text-xs font-medium text-muted-foreground h-4">Sort By</Label>
+              <div className="h-10">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="h-10 w-full md:w-[180px] border-none shadow-none focus:ring-0" data-testid="sort-dropdown">
                   <SelectValue placeholder="Sort by..." />
                 </SelectTrigger>
                 <SelectContent>
+                  {searchQuery && (
+                    <SelectItem value="relevance">Relevance</SelectItem>
+                  )}
                   <SelectItem value="updated_desc">Last Updated</SelectItem>
-                  <SelectItem value="title_asc">Title A-Z</SelectItem>
-                  <SelectItem value="team_min_asc">Team Size</SelectItem>
+                  <SelectItem value="earliest_deadline">Earliest Deadline</SelectItem>
+                  <SelectItem value="most_viewed">Most Viewed</SelectItem>
                 </SelectContent>
               </Select>
+              </div>
             </div>
           </div>
         </div>
@@ -278,7 +302,7 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
         </div>
 
         {/* Floating sidebar filters (desktop) */}
-        <div className="hidden lg:block sticky top-24">
+        <div className="hidden lg:block sticky top-[230px]">
           {sidebarCollapsed ? (
             <Button
               variant="outline"
@@ -303,7 +327,7 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
               </div>
 
               {/* Filters content */}
-              <div className="p-4 max-h-[calc(100vh-12rem)] overflow-auto">
+              <div className="p-4 max-h-[calc(100vh-220px)] overflow-auto">
                 <Filters
                   collaboration={collaboration}
                   onCollaborationChange={setCollaboration}

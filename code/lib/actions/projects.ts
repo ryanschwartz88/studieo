@@ -457,14 +457,19 @@ export async function updateProjectFull(
     return { success: false, error: 'Access denied' };
   }
 
-  // Verify project belongs to company
+  // Verify project belongs to user AND was created by user
   const { data: proj, error: projErr } = await supabase
     .from('projects')
-    .select('id, company_id, status, start_date')
+    .select('id, company_id, created_by_id, status, start_date')
     .eq('id', projectId)
     .single();
   if (projErr || !proj || proj.company_id !== userData.company_id) {
     return { success: false, error: 'Project not found or access denied' };
+  }
+  
+  // Only the creator can edit the project
+  if (proj.created_by_id !== user.id) {
+    return { success: false, error: 'Only the project creator can edit this project' };
   }
 
   // Enrich input: default open_date to today if not provided
@@ -610,10 +615,10 @@ export async function updateProjectFields(
     return { success: false, error: 'Access denied' };
   }
 
-  // Verify project belongs to same company
+  // Verify project belongs to same company AND user created it
   const { data: proj, error: projErr } = await supabase
     .from('projects')
-    .select('company_id')
+    .select('company_id, created_by_id')
     .eq('id', projectId)
     .single();
   if (projErr || !proj) {
@@ -621,6 +626,11 @@ export async function updateProjectFields(
   }
   if (proj.company_id && userData.company_id && proj.company_id !== userData.company_id) {
     return { success: false, error: 'Access denied' };
+  }
+  
+  // Only the creator can edit the project
+  if (proj.created_by_id !== user.id) {
+    return { success: false, error: 'Only the project creator can edit this project' };
   }
 
   // Validate and normalize
@@ -698,6 +708,80 @@ export async function getProjectResourceSignedUrl(
     return { success: false, error: 'Failed to create signed URL' };
   }
   return { success: true, url: data?.signedUrl };
+}
+
+/**
+ * Record a project view
+ * Only tracks views from STUDENT users (not companies viewing their own projects)
+ * Tracks unique views per user and updates the view counter
+ * Can be called when user views a project details page or modal
+ */
+export async function recordProjectView(projectId: string) {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    // Optionally allow anonymous views, but for Studieo we require auth
+    return { success: false, error: 'Not authenticated' };
+  }
+  
+  // Check user role - only track student views
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  
+  // Only track views from students (not companies)
+  if (!userData || userData.role !== 'STUDENT') {
+    return { 
+      success: true, 
+      isNewView: false,
+      viewCount: 0,
+      message: 'View not tracked (company user)'
+    };
+  }
+  
+  // Call the database function to record the view
+  const { data, error } = await supabase.rpc('record_project_view', {
+    p_project_id: projectId,
+    p_user_id: user.id,
+  });
+  
+  if (error) {
+    console.error('Error recording project view:', error);
+    return { success: false, error: 'Failed to record view' };
+  }
+  
+  return { 
+    success: true, 
+    isNewView: data?.is_new_view || false,
+    viewCount: data?.view_count || 0,
+  };
+}
+
+/**
+ * Get recently viewed projects for current user
+ */
+export async function getRecentlyViewedProjects(limit: number = 10) {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+  
+  const { data, error } = await supabase.rpc('get_recently_viewed_projects', {
+    p_user_id: user.id,
+    p_limit: limit,
+  });
+  
+  if (error) {
+    console.error('Error fetching recently viewed projects:', error);
+    return { success: false, error: 'Failed to fetch recently viewed projects' };
+  }
+  
+  return { success: true, projects: data || [] };
 }
 
 

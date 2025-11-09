@@ -14,7 +14,7 @@ interface BrowsePageProps {
     collab?: string
     location?: string
     hours?: string
-    sort?: 'updated_desc' | 'title_asc' | 'team_min_asc'
+    sort?: 'updated_desc' | 'title_asc' | 'team_min_asc' | 'relevance'
   }>
 }
 
@@ -35,129 +35,33 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
     userCompanyId = userData?.company_id || null
   }
 
-  // Build query
-  let query = supabase
-    .from('projects')
-    .select(`
-      id,
-      title,
-      short_summary,
-      detailed_description,
-      deliverables,
-      project_type,
-      skills_needed,
-      min_students,
-      max_students,
-      weekly_hours,
-      max_teams,
-      access_type,
-      status,
-      start_date,
-      end_date,
-      updated_at,
-      company_id,
-      collaboration_style,
-      location,
-      resource_links,
-      resource_files,
-      companies (
-        name,
-        logo_url
-      )
-    `)
-
-  // Always show projects that are accepting applications
-  query = query.eq('status', 'ACCEPTING')
-
-  // Access type filter (OPEN vs CLOSED)
-  const access = (params.access || 'OPEN').toUpperCase()
-  if (access === 'OPEN' || access === 'CLOSED') {
-    query = query.eq('access_type', access)
-  }
-
-  // Search filter
-  if (params.q) {
-    // Note: We need to search both project title and company name
-    // This is a simplified approach - for production, consider full-text search
-    query = query.ilike('title', `%${params.q}%`)
-  }
-
-  // Team size filter (overlap logic)
-  const teamMinRaw = params.teamMin ? Number(params.teamMin) : 1
-  const teamMaxRaw = params.teamMax ? Number(params.teamMax) : 11
-  
-  // Only apply filter if not at default values (1 and 11)
-  if (teamMinRaw !== 1 || teamMaxRaw !== 11) {
-    // Interpret 11 as 10+ (effectively no upper bound)
-    const teamMin = teamMinRaw
-    const teamMax = teamMaxRaw === 11 ? 9999 : teamMaxRaw
-    
-    // Projects where min_students <= teamMax AND max_students >= teamMin
-    // This ensures overlap: project's range overlaps with user's selected range
-    query = query.lte('min_students', teamMax).gte('max_students', teamMin)
-  }
-
-  // Max teams filter
-  // Only apply filter if unlimited is OFF and a specific number is set
-  if (params.unlimited !== 'true' && params.maxTeams) {
-    const maxTeamsNum = Number(params.maxTeams)
-    if (!isNaN(maxTeamsNum)) {
-      // Show projects with max_teams <= specified number OR unlimited (null)
-      query = query.or(`max_teams.is.null,max_teams.lte.${maxTeamsNum}`)
-    }
-  }
-  // If unlimited is ON, no filter applied - show all projects regardless of max_teams
-
-  // Collaboration filter
-  if (params.collab) {
-    const collabValues = params.collab.split(',').filter(Boolean)
-    if (collabValues.length > 0) {
-      query = query.in('collaboration_style', collabValues)
-    }
-  }
-
-  // Location filter
-  if (params.location) {
-    query = query.ilike('location', `%${params.location}%`)
-  }
-
-  // Weekly hours filter
-  if (params.hours) {
-    const hourBuckets = params.hours.split(',').filter(Boolean)
-    if (hourBuckets.length > 0) {
-      const conditions: string[] = []
-      
-      hourBuckets.forEach(bucket => {
-        if (bucket === '1-5') {
-          conditions.push('weekly_hours.lte.5')
-        } else if (bucket === '5-10') {
-          conditions.push('and(weekly_hours.gte.5,weekly_hours.lte.10)')
-        } else if (bucket === '10-15') {
-          conditions.push('and(weekly_hours.gte.10,weekly_hours.lte.15)')
-        } else if (bucket === '15-20') {
-          conditions.push('and(weekly_hours.gte.15,weekly_hours.lte.20)')
-        } else if (bucket === '20+') {
-          conditions.push('weekly_hours.gte.20')
-        }
-      })
-
-      if (conditions.length > 0) {
-        query = query.or(conditions.join(','))
-      }
-    }
-  }
-
-  // Sorting
+  // Use full-text search function for better search capabilities
+  // Prepare filter parameters
+  const access = (params.access || 'OPEN').toUpperCase() as 'OPEN' | 'CLOSED' | null
+  const teamMin = params.teamMin ? Number(params.teamMin) : 1
+  const teamMax = params.teamMax ? Number(params.teamMax) : 11
+  const maxTeams = params.unlimited !== 'true' && params.maxTeams ? Number(params.maxTeams) : null
+  const collaboration = params.collab ? params.collab.split(',').filter(Boolean) : null
+  const hours = params.hours ? params.hours.split(',').filter(Boolean) : null
   const sort = params.sort || 'updated_desc'
-  if (sort === 'updated_desc') {
-    query = query.order('updated_at', { ascending: false })
-  } else if (sort === 'title_asc') {
-    query = query.order('title', { ascending: true })
-  } else if (sort === 'team_min_asc') {
-    query = query.order('min_students', { ascending: true })
-  }
+  
+  // Use relevance sorting if there's a search query
+  const sortBy = params.q && params.q.trim() ? 'relevance' : sort
 
-  const { data: projects, error } = await query
+  // Call the search_projects RPC function
+  const { data: projects, error } = await supabase.rpc('search_projects', {
+    search_query: params.q || null,
+    project_status_filter: 'ACCEPTING',
+    access_type_filter: (access === 'OPEN' || access === 'CLOSED') ? access : null,
+    team_min_filter: teamMin,
+    team_max_filter: teamMax,
+    max_teams_filter: maxTeams,
+    unlimited_teams: params.unlimited === 'true',
+    collaboration_filter: collaboration,
+    location_filter: params.location || null,
+    hours_filter: hours,
+    sort_by: sortBy
+  })
 
   if (error) {
     console.error('Error fetching projects:', error)
@@ -171,10 +75,39 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
     )
   }
 
+  // Map RPC function results to Project type format
+  const mappedProjects: Project[] = (projects || []).map((p: any) => ({
+    id: p.id,
+    title: p.title,
+    short_summary: p.short_summary,
+    detailed_description: p.detailed_description,
+    deliverables: p.deliverables,
+    project_type: p.project_type,
+    skills_needed: p.skills_needed,
+    min_students: p.min_students,
+    max_students: p.max_students,
+    weekly_hours: p.weekly_hours,
+    max_teams: p.max_teams,
+    access_type: p.access_type,
+    status: p.status,
+    start_date: p.start_date,
+    end_date: p.end_date,
+    updated_at: p.updated_at,
+    company_id: p.company_id,
+    collaboration_style: p.collaboration_style,
+    location: p.location,
+    resource_links: p.resource_links,
+    resource_files: p.resource_files,
+    companies: {
+      name: p.company_name,
+      logo_url: p.company_logo_url
+    }
+  }))
+
   return (
     <Suspense fallback={<BrowseClientSkeleton />}>
       <BrowseClient
-        initialProjects={(projects || []) as unknown as Project[]}
+        initialProjects={mappedProjects}
         userCompanyId={userCompanyId}
       />
     </Suspense>
