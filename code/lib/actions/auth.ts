@@ -357,6 +357,20 @@ export async function resetPassword(email: string) {
 export async function updatePassword(password: string) {
   const supabase = await createClient();
   
+  // Check if user has a session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  console.log('[UPDATE-PASSWORD-ACTION] Session check:', {
+    hasSession: !!session,
+    sessionError: sessionError?.message,
+  });
+  
+  if (!session) {
+    return { 
+      success: false, 
+      error: 'Auth session missing! Please use the reset link from your email.' 
+    };
+  }
+  
   // Validate password
   const result = updatePasswordSchema.safeParse({ 
     password, 
@@ -375,8 +389,11 @@ export async function updatePassword(password: string) {
   });
   
   if (error) {
+    console.error('[UPDATE-PASSWORD-ACTION] Update error:', error.message);
     return { success: false, error: error.message };
   }
+  
+  console.log('[UPDATE-PASSWORD-ACTION] Password updated successfully');
   
   revalidatePath('/', 'layout');
   
