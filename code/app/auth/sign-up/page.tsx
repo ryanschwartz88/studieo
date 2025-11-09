@@ -10,8 +10,6 @@ import { signUpStudent, signUpCompany } from '@/lib/actions/auth';
 import { Loader2, X, Eye, EyeOff, Check } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { signInWithGoogle } from '@/lib/actions/auth';
-import { FcGoogle } from 'react-icons/fc';
 
 export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
@@ -127,24 +125,6 @@ export default function SignUpPage() {
                 Company
               </TabsTrigger>
             </TabsList>
-          </div>
-
-          {/* Google OAuth */}
-          <div className="mb-6 space-y-4">
-            <form action={async () => { await signInWithGoogle(); }}>
-              <Button type="submit" variant="outline" className="w-full h-11 rounded-xl border-input hover:bg-accent hover:text-accent-foreground">
-                <FcGoogle className="mr-2 h-5 w-5" />
-                Continue with Google
-              </Button>
-            </form>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
           </div>
           
           <TabsContents>

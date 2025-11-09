@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { signIn, signInWithGoogle } from '@/lib/actions/auth';
-import { FcGoogle } from 'react-icons/fc';
+import { signIn } from '@/lib/actions/auth';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -35,23 +34,6 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-center text-3xl font-semibold tracking-tight mb-8">Welcome back</h1>
-
-        <div className="mb-6 space-y-4">
-          <form action={async () => { await signInWithGoogle(); }}>
-            <Button type="submit" variant="outline" className="w-full h-11 rounded-xl border-input hover:bg-accent hover:text-accent-foreground" data-testid="login-google">
-              <FcGoogle className="mr-2 h-5 w-5" />
-              Continue with Google
-            </Button>
-          </form>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
-            </div>
-          </div>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
