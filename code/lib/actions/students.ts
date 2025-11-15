@@ -19,8 +19,8 @@ export async function completeOnboarding(formData: StudentOnboardingInput) {
   }
   
   // Validate schema (except file, handled separately)
-  const { resume, ...profileData } = formData;
-  const result = studentOnboardingSchema.omit({ resume: true }).safeParse(profileData);
+  const { resume, ...formProfileData } = formData;
+  const result = studentOnboardingSchema.omit({ resume: true }).safeParse(formProfileData);
   
   if (!result.success) {
     return { 
@@ -31,23 +31,33 @@ export async function completeOnboarding(formData: StudentOnboardingInput) {
   
   const { grad_date, interests, description } = result.data;
   
-  // Update student profile
-  const { error: updateError } = await supabase
-    .from('student_profiles')
-    .update({
-      grad_date: grad_date.toISOString().split('T')[0], // Format as YYYY-MM-DD
-      interests,
-      description,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('user_id', user.id);
+  // Use UPSERT to handle both insert and update cases
+  // This ensures the profile is created if it doesn't exist (shouldn't happen, but safe)
+  const profileData = {
+    user_id: user.id,
+    grad_date: grad_date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+    interests,
+    description,
+    updated_at: new Date().toISOString(),
+  };
   
-  if (updateError) {
-    return { success: false, error: 'Failed to update profile' };
+  const { error: upsertError } = await supabase
+    .from('student_profiles')
+    .upsert(profileData, {
+      onConflict: 'user_id',
+    });
+  
+  if (upsertError) {
+    console.error('[completeOnboarding] Profile upsert error:', upsertError);
+    return { 
+      success: false, 
+      error: upsertError.message || 'Failed to update profile. Please try again.' 
+    };
   }
   
   revalidatePath('/auth/onboarding');
-  redirect('/browse');
+  revalidatePath('/student/dashboard');
+  redirect('/student/search');
 }
 
 /**
@@ -215,5 +225,32 @@ export async function getStudentProfile() {
   }
   
   return { success: true, profile: data };
+}
+
+/**
+ * Search for students by name or email using RPC
+ * Excludes the current user from results
+ * Uses SECURITY DEFINER function to bypass RLS
+ * Returns student info with school name
+ */
+export async function searchStudents(query: string = '') {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated', students: [] };
+  }
+  
+  // Call the RPC function which bypasses RLS and returns school info
+  const { data, error } = await supabase.rpc('search_students', {
+    q: query.trim()
+  });
+  
+  if (error) {
+    console.error('Error searching students:', error);
+    return { success: false, error: 'Failed to search students', students: [] };
+  }
+  
+  return { success: true, students: data || [] };
 }
 

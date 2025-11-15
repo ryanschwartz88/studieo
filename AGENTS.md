@@ -52,12 +52,14 @@ studieo/
 │   │   │   ├── login/
 │   │   │   ├── sign-up/
 │   │   │   └── onboarding/
-│   │   ├── (student)/          # Student route group
+│   │   ├── student/            # Student routes (/student/*)
+│   │   │   ├── dashboard/
+│   │   │   ├── search/
+│   │   │   └── profile/
+│   │   ├── company/            # Company routes (/company/*)
 │   │   │   ├── dashboard/
 │   │   │   ├── browse/
-│   │   │   └── applications/[id]/
-│   │   ├── (company)/          # Company route group
-│   │   │   ├── dashboard/
+│   │   │   ├── settings/
 │   │   │   └── projects/
 │   │   │       ├── new/
 │   │   │       └── [id]/

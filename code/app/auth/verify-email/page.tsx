@@ -85,10 +85,10 @@ export default function VerifyEmailPage() {
           if (!studentProfile?.grad_date) {
             router.replace('/auth/onboarding');
           } else {
-            router.replace('/search');
+            router.replace('/student/search');
           }
         } else if (userData?.role === 'COMPANY') {
-          router.replace('/dashboard');
+          router.replace('/company/dashboard');
         }
       }
     }, 3000); // Check every 3 seconds

@@ -45,7 +45,7 @@ export default function OnboardingPage() {
         .eq('user_id', user.id)
         .single();
       
-      // If onboarding is complete, redirect to browse
+      // If onboarding is complete, redirect to search
       const isComplete = !!(
         profile?.grad_date && 
         profile?.interests?.length && 
@@ -53,8 +53,8 @@ export default function OnboardingPage() {
       );
       
       if (isComplete) {
-        console.log('[ONBOARDING] Already complete, redirecting to browse');
-        router.replace('/browse');
+        console.log('[ONBOARDING] Already complete, redirecting to search');
+        router.replace('/student/search');
       }
     };
     

@@ -260,9 +260,9 @@ export async function signIn(formData: SignInInput) {
       profile?.description
     );
     
-    redirect(onboardingComplete ? '/browse' : '/auth/onboarding');
+    redirect(onboardingComplete ? '/student/search' : '/auth/onboarding');
   } else if (userData?.role === 'COMPANY') {
-    redirect('/dashboard');
+    redirect('/company/dashboard');
   }
   
   // Fallback
@@ -405,9 +405,9 @@ export async function updatePassword(password: string) {
     .single();
   
   if (userData?.role === 'STUDENT') {
-    redirect('/browse');
+    redirect('/student/search');
   } else if (userData?.role === 'COMPANY') {
-    redirect('/dashboard');
+    redirect('/company/dashboard');
   }
   
   redirect('/');

@@ -26,9 +26,9 @@ export default async function HomePage() {
         redirect('/auth/onboarding');
       }
       
-      redirect('/search');
+      redirect('/student/search');
     } else if (userData?.role === 'COMPANY') {
-      redirect('/dashboard');
+      redirect('/company/dashboard');
     }
   }
 

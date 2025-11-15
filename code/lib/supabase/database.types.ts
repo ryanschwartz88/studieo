@@ -46,6 +46,7 @@ export type Database = {
           optional_answers: Json | null
           project_id: string
           status: Database["public"]["Enums"]["application_status"]
+          submitted_at: string | null
           team_lead_id: string
           updated_at: string
         }
@@ -56,6 +57,7 @@ export type Database = {
           optional_answers?: Json | null
           project_id: string
           status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string | null
           team_lead_id: string
           updated_at?: string
         }
@@ -66,6 +68,7 @@ export type Database = {
           optional_answers?: Json | null
           project_id?: string
           status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string | null
           team_lead_id?: string
           updated_at?: string
         }
@@ -376,20 +379,26 @@ export type Database = {
       team_members: {
         Row: {
           application_id: string
+          confirmed_at: string | null
           id: string
           invite_status: Database["public"]["Enums"]["team_invite_status"]
+          is_lead: boolean
           student_id: string
         }
         Insert: {
           application_id: string
+          confirmed_at?: string | null
           id?: string
           invite_status?: Database["public"]["Enums"]["team_invite_status"]
+          is_lead?: boolean
           student_id: string
         }
         Update: {
           application_id?: string
+          confirmed_at?: string | null
           id?: string
           invite_status?: Database["public"]["Enums"]["team_invite_status"]
+          is_lead?: boolean
           student_id?: string
         }
         Relationships: [
@@ -477,6 +486,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_accept_application: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       can_access_application: { Args: { app_id: string }; Returns: boolean }
       can_access_design_doc: { Args: { doc_name: string }; Returns: boolean }
       can_manage_team_members: { Args: { app_id: string }; Returns: boolean }
@@ -487,6 +500,26 @@ export type Database = {
       company_can_view_student_profile: {
         Args: { student_user_id: string }
         Returns: boolean
+      }
+      create_application_secure: {
+        Args: {
+          p_project_id: string
+          p_status?: Database["public"]["Enums"]["application_status"]
+          p_team_lead_id: string
+        }
+        Returns: {
+          application_id: string
+          error_message: string
+          success: boolean
+        }[]
+      }
+      create_test_student: {
+        Args: { p_email: string; p_name: string; p_user_id: string }
+        Returns: undefined
+      }
+      disband_application: {
+        Args: { p_application_id: string; p_student_id: string }
+        Returns: Json
       }
       get_my_company_id: { Args: Record<PropertyKey, never>; Returns: string }
       get_my_role: {
@@ -504,6 +537,23 @@ export type Database = {
           viewed_at: string
         }[]
       }
+      get_team_member_emails: {
+        Args: { p_application_id: string }
+        Returns: {
+          email: string
+          is_lead: boolean
+          name: string
+        }[]
+      }
+      get_test_student_emails: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          email: string
+          name: string
+          school_name: string
+        }[]
+      }
+      is_student: { Args: Record<PropertyKey, never>; Returns: boolean }
       project_search_vector: {
         Args: { project_row: Database["public"]["Tables"]["projects"]["Row"] }
         Returns: unknown
@@ -552,6 +602,25 @@ export type Database = {
           updated_at: string
           view_count: number
           weekly_hours: number
+        }[]
+      }
+      search_students: {
+        Args: { q?: string }
+        Returns: {
+          email: string
+          id: string
+          name: string
+          school_name: string
+        }[]
+      }
+      seed_test_students: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          email: string
+          name: string
+          school_name: string
+          success: boolean
+          user_id: string
         }[]
       }
       transition_scheduled_projects: { Args: Record<PropertyKey, never>; Returns: undefined }
@@ -745,4 +814,3 @@ export const Constants = {
     },
   },
 } as const
-

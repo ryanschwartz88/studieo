@@ -200,8 +200,8 @@ export async function middleware(request: Request) {
 
 export const config = {
   matcher: [
-    '/(student)/:path*',
-    '/(company)/:path*',
+    '/student/:path*',
+    '/company/:path*',
   ],
 };
 ```
@@ -211,7 +211,7 @@ export const config = {
 Check user role in layouts using the `users` table:
 
 ```typescript
-// app/(student)/layout.tsx
+// app/student/layout.tsx
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
@@ -219,7 +219,7 @@ export default async function StudentLayout({ children }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  if (!user) redirect('/login');
+  if (!user) redirect('/auth/login');
   
   // Check user role from users table
   const { data: userData } = await supabase
@@ -237,7 +237,7 @@ export default async function StudentLayout({ children }) {
     .eq('user_id', user.id)
     .single();
   
-  if (!profile || !profile.grad_date) redirect('/onboarding');
+  if (!profile || !profile.grad_date) redirect('/auth/onboarding');
   
   return <>{children}</>;
 }

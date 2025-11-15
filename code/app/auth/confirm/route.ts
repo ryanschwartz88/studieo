@@ -117,11 +117,11 @@ async function handleUserRedirect(supabase: any, user: any) {
     
     // Profile complete, go to student browse
     console.log('[CONFIRM] Redirecting to student browse');
-    redirect('/search');
+    redirect('/student/search');
   } else if (userRole === 'COMPANY') {
     // Companies don't need onboarding, go straight to dashboard
     console.log('[CONFIRM] Redirecting to company dashboard');
-    redirect('/dashboard');
+    redirect('/company/dashboard');
   }
   
   // Fallback to login if role is unknown

@@ -1,7 +1,18 @@
 import { redirect } from 'next/navigation';
+import { cache } from 'react';
 import { createClient } from './server';
 
 export type UserRole = 'STUDENT' | 'COMPANY';
+
+/**
+ * Per-request cached current user.
+ * Avoids multiple supabase.auth.getUser() calls within the same render.
+ */
+export const getCurrentUser = cache(async () => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});
 
 /**
  * Get the current user's role from the database
@@ -9,7 +20,7 @@ export type UserRole = 'STUDENT' | 'COMPANY';
  */
 export async function getUserRole(): Promise<UserRole | null> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   
   if (!user) return null;
   
@@ -40,8 +51,7 @@ export async function requireRole(role: UserRole): Promise<void> {
  * Require authentication, redirect to login if not authenticated
  */
 export async function requireAuth(): Promise<void> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   
   if (!user) {
     redirect('/auth/login');
@@ -52,8 +62,7 @@ export async function requireAuth(): Promise<void> {
  * Require email verification. Redirects to /auth/verify-email if not verified.
  */
 export async function requireEmailVerified(): Promise<void> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect('/auth/login');
@@ -70,13 +79,19 @@ export async function requireEmailVerified(): Promise<void> {
  */
 export async function getOnboardingStatus() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   
   if (!user) {
     return { complete: false, data: null };
   }
   
-  const role = await getUserRole();
+  // Get role without calling getUserRole() to avoid extra getUser() calls
+  const { data: roleRow } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  const role = (roleRow?.role as UserRole | undefined) ?? null;
   
   // Companies don't have required onboarding
   if (role === 'COMPANY') {
@@ -129,11 +144,16 @@ export async function requireOnboarding(): Promise<void> {
  */
 export async function getUserWithRole() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   
   if (!user) return null;
   
-  const role = await getUserRole();
+  const { data: roleRow } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  const role = (roleRow?.role as UserRole | undefined) ?? null;
   
   return {
     ...user,
@@ -147,19 +167,35 @@ export async function getUserWithRole() {
  */
 export async function getAuthenticatedRedirect(): Promise<string | null> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   
   if (!user) return null;
   
-  const role = await getUserRole();
+  const { data: roleRow } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  const role = (roleRow?.role as UserRole | undefined) ?? null;
   
   if (role === 'STUDENT') {
-    const { complete } = await getOnboardingStatus();
-    return complete ? '/browse' : '/auth/onboarding';
+    // Inline onboarding check to avoid extra calls
+    const { data: studentProfile } = await supabase
+      .from('student_profiles')
+      .select('grad_date, interests, description')
+      .eq('user_id', user.id)
+      .single();
+    const complete = !!(
+      studentProfile?.grad_date &&
+      studentProfile?.interests &&
+      studentProfile?.interests.length > 0 &&
+      studentProfile?.description
+    );
+    return complete ? '/student/search' : '/auth/onboarding';
   }
   
   if (role === 'COMPANY') {
-    return '/dashboard';
+    return '/company/dashboard';
   }
   
   return '/';
