@@ -6,6 +6,7 @@ import {
   sendApplicationDisbanded,
   sendTeamMemberConfirmed,
 } from '@/lib/email/templates'
+import { submitApplication } from '@/lib/actions/applications'
 
 /**
  * Confirm team membership
@@ -35,12 +36,11 @@ export async function confirmTeamMembership(applicationId: string) {
     return { success: false, error: 'You have already confirmed your participation' }
   }
 
-  // Update team member status
+  // Update team member status (confirmed_at will be auto-set by trigger)
   const { error } = await supabase
     .from('team_members')
     .update({
       invite_status: 'ACCEPTED',
-      confirmed_at: new Date().toISOString(),
     })
     .eq('id', teamMember.id)
 
@@ -58,13 +58,10 @@ export async function confirmTeamMembership(applicationId: string) {
     const allConfirmed = allMembers.every(member => member.invite_status === 'ACCEPTED')
     
     if (allConfirmed) {
-      // All team members have confirmed, auto-submit the application
-      const { submitApplication } = await import('./applications')
-      const submitResult = await submitApplication(applicationId)
-      
+      const submitResult = await submitApplication(applicationId, true)
+
       if (!submitResult.success) {
         console.error('Failed to auto-submit application:', submitResult.error)
-        // Don't fail the confirmation - just log the error
       }
     }
   }
@@ -110,7 +107,7 @@ export async function confirmTeamMembership(applicationId: string) {
     }
   }
 
-  revalidatePath(`/student/search/projects`)
+  revalidatePath(`/student/projects`)
   revalidatePath('/student/dashboard')
   return { success: true }
 }
@@ -191,7 +188,7 @@ export async function declineTeamMembership(applicationId: string) {
     })
   }
 
-  revalidatePath('/student/search')
+  revalidatePath('/student/projects')
   revalidatePath('/student/dashboard')
   return { success: true }
 }

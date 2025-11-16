@@ -14,12 +14,15 @@ import {
 
 type Application = {
   id: string
+  projectId: string
   projectTitle: string
   status: string
 }
 
 interface ApplicationsMenuProps {
   applications: Application[]
+  count: number
+  maxCount: number
 }
 
 const getStatusLabel = (status: string) => {
@@ -40,17 +43,20 @@ const getStatusClasses = (status: string): string => {
   return statusClasses[key] || statusClasses.PENDING
 }
 
-export function ApplicationsMenu({ applications }: ApplicationsMenuProps) {
+export function ApplicationsMenu({ applications, count, maxCount }: ApplicationsMenuProps) {
   const pathname = usePathname()
 
-  // Extract application ID from pathname if on an application page
-  const currentApplicationId = pathname.startsWith('/applications/')
-    ? pathname.split('/')[2]
+  // Extract project ID from pathname if on a project page
+  const currentProjectId = pathname.startsWith('/student/projects/')
+    ? pathname.split('/')[3]
     : null
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Applications</SidebarGroupLabel>
+      <SidebarGroupLabel className="flex items-center justify-between">
+        <span>Applications</span>
+        <span className="text-xs text-muted-foreground font-normal">{count}/{maxCount}</span>
+      </SidebarGroupLabel>
       <SidebarMenu>
         {applications.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
@@ -58,7 +64,7 @@ export function ApplicationsMenu({ applications }: ApplicationsMenuProps) {
           </div>
         ) : (
           applications.map((application) => {
-            const isActive = currentApplicationId === application.id
+            const isActive = currentProjectId === application.projectId
             
             return (
               <SidebarMenuItem key={application.id}>
@@ -71,7 +77,7 @@ export function ApplicationsMenu({ applications }: ApplicationsMenuProps) {
                   )}
                 >
                   <Link
-                    href={`/applications/${application.id}`}
+                    href={`/student/projects/${application.projectId}`}
                     className="flex w-full items-center gap-2"
                     data-testid={`application-link-${application.id}`}
                   >

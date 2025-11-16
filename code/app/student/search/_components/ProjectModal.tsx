@@ -72,6 +72,10 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
   const [pdfFullscreen, setPdfFullscreen] = useState(false)
 
   const handleAddMember = (student: Student) => {
+    // Prevent duplicates
+    if (selectedMembers.some(m => m.id === student.id)) {
+      return
+    }
     setSelectedMembers([...selectedMembers, { ...student, isCurrentUser: false }])
   }
 
@@ -123,8 +127,8 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
       return
     }
     
-    // Validate team size
-    const totalTeamSize = 1 + selectedMembers.length
+    // Validate team size (selectedMembers already includes current user)
+    const totalTeamSize = selectedMembers.length
     const minTeam = project.min_students || 1
     const maxTeam = project.max_students || 10
     
@@ -138,16 +142,21 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
     }
     
     startTransition(async () => {
+      // Filter out current user from team members (they're automatically the lead)
+      const teamMemberIds = selectedMembers
+        .filter(m => !m.isCurrentUser)
+        .map(m => m.id)
+      
       const result = await createApplication(
         project.id,
-        selectedMembers.map(m => m.id),
+        teamMemberIds,
         designDoc || undefined
       )
       
       if (result.success) {
         toast.success('Application created successfully!')
         onClose()
-        router.push(`/applications/${result.applicationId}`)
+        router.push(`/student/projects/${project.id}`)
         router.refresh()
       } else {
         toast.error(result.error || 'Failed to create application')
@@ -155,7 +164,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
     })
   }
 
-  const totalTeamSize = 1 + selectedMembers.length
+  const totalTeamSize = selectedMembers.length
   const minTeam = project.min_students || 1
   const maxTeam = project.max_students || 10
 
@@ -420,7 +429,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                 asChild
                 data-testid={`view-full-project-btn-${project.id}`}
               >
-                <Link href={`/student/search/projects/${project.id}`}>
+                <Link href={`/student/projects/${project.id}`}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View Full Project
                 </Link>
@@ -442,8 +451,13 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                   <button
                     onClick={() => {
                       setShowApplyForm(false)
-                      // Reset form state
-                      setSelectedMembers([])
+                      // Reset form state (keep current user)
+                      setSelectedMembers([
+                        {
+                          ...currentUser,
+                          isCurrentUser: true
+                        }
+                      ])
                       setDesignDoc(null)
                       if (pdfPreviewUrl) {
                         URL.revokeObjectURL(pdfPreviewUrl)
@@ -614,8 +628,13 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                     variant="outline" 
                     onClick={() => {
                       setShowApplyForm(false)
-                      // Reset form state
-                      setSelectedMembers([])
+                      // Reset form state (keep current user)
+                      setSelectedMembers([
+                        {
+                          ...currentUser,
+                          isCurrentUser: true
+                        }
+                      ])
                       setDesignDoc(null)
                       if (pdfPreviewUrl) {
                         URL.revokeObjectURL(pdfPreviewUrl)

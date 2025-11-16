@@ -237,10 +237,9 @@ export async function createApplication(
     }
   } else {
     // Solo application (team lead only) - auto-submit immediately
-    const submitResult = await submitApplication(application.id)
+    const submitResult = await submitApplication(application.id, true) // true = isAutoSubmit
     if (!submitResult.success) {
-      console.error('Failed to auto-submit solo application:', submitResult.error)
-      // Don't fail the creation - just log the error
+      return { success: false, error: submitResult.error || 'Failed to auto-submit solo application' }
     }
   }
 
@@ -249,7 +248,7 @@ export async function createApplication(
   return { success: true, applicationId: application.id }
 }
 
-export async function submitApplication(applicationId: string) {
+export async function submitApplication(applicationId: string, isAutoSubmit: boolean = false) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -257,10 +256,11 @@ export async function submitApplication(applicationId: string) {
     return { success: false, error: 'Not authenticated' }
   }
 
-  // Verify user is team lead
+  // Fetch application details
   const { data: application } = await supabase
     .from('applications')
     .select(`
+      id,
       team_lead_id,
       status,
       project_id,
@@ -268,6 +268,9 @@ export async function submitApplication(applicationId: string) {
         title,
         access_type,
         max_teams,
+        contact_name,
+        contact_email,
+        contact_role,
         company_id,
         companies(name, domain)
       )
@@ -275,29 +278,48 @@ export async function submitApplication(applicationId: string) {
     .eq('id', applicationId)
     .single()
 
-  if (!application || application.team_lead_id !== user.id) {
-    return { success: false, error: 'Application not found or access denied' }
+  if (!application) {
+    return { success: false, error: 'Application not found' }
   }
 
-  if (application.status !== 'PENDING') {
+  // Verify user is team lead (unless it's an auto-submit after all members confirmed)
+  if (!isAutoSubmit && application.team_lead_id !== user.id) {
+    return { success: false, error: 'Only the team lead can submit the application' }
+  }
+
+  if (!isAutoSubmit && application.status !== 'PENDING') {
     return { success: false, error: 'Application has already been submitted' }
   }
 
   const project = application.projects as any
   const company = project?.companies as any
 
-  // Update application status to SUBMITTED
-  const { error } = await supabase
-    .from('applications')
-    .update({
-      status: 'SUBMITTED',
-      submitted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+  if (isAutoSubmit) {
+    const { data: autoSubmitResult, error: autoSubmitError } = await supabase.rpc('auto_submit_application', {
+      p_application_id: applicationId,
     })
-    .eq('id', applicationId)
 
-  if (error) {
-    return { success: false, error: error.message }
+    if (autoSubmitError) {
+      return { success: false, error: autoSubmitError.message }
+    }
+
+    if (!autoSubmitResult) {
+      return { success: false, error: 'All team members must confirm before submitting' }
+    }
+  } else {
+    // Update application status to SUBMITTED
+    const { error } = await supabase
+      .from('applications')
+      .update({
+        status: 'SUBMITTED',
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', applicationId)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
   }
 
   // Get all team members for email notifications
@@ -317,7 +339,7 @@ export async function submitApplication(applicationId: string) {
   const { data: teamLeadData } = await supabase
     .from('users')
     .select('name')
-    .eq('id', user.id)
+    .eq('id', application.team_lead_id)
     .single()
 
   const teamLeadName = teamLeadData?.name || 'Team lead'
@@ -343,27 +365,72 @@ export async function submitApplication(applicationId: string) {
     })
   }
 
-  // Check if project is OPEN (auto-approve)
+  // Handle OPEN projects by auto-deciding based on capacity
   if (project.access_type === 'OPEN') {
-    // Check if project has capacity
-    const { data: canAccept } = await supabase
-      .rpc('can_accept_application', { p_project_id: application.project_id })
+    const { data: autoDecision, error: autoDecisionError } = await supabase.rpc('auto_decide_open_application', {
+      p_application_id: applicationId,
+    })
 
-    if (canAccept) {
-      // Auto-approve the application
-      const acceptResult = await acceptApplication(applicationId)
-      if (!acceptResult.success) {
-        console.error('Failed to auto-approve OPEN project application:', acceptResult.error)
-        // Don't return error - submission still succeeded
+    if (autoDecisionError) {
+      console.error('Failed to auto decide OPEN project application:', autoDecisionError.message)
+      return { success: false, error: 'Unable to finalize the application decision. Please try again.' }
+    }
+
+    if (autoDecision === 'ACCEPTED') {
+      // Send acceptance emails to all team members
+      if (teamMembers.length > 0) {
+        Promise.all(
+          teamMembers.map(member => {
+            const memberUser = member.users as any
+            return sendApplicationAccepted({
+              toEmail: memberUser.email,
+              toName: memberUser.name || 'Student',
+              projectTitle: project.title,
+              companyName: company.name,
+              contactName: project.contact_name,
+              contactEmail: project.contact_email,
+              contactRole: project.contact_role,
+              applicationId,
+            })
+          })
+        ).catch(error => {
+          console.error('Failed to send acceptance emails for OPEN project:', error)
+        })
       }
-    } else {
-      // Project at capacity - return error
-      // Revert submission
-      await supabase
-        .from('applications')
-        .update({ status: 'PENDING', submitted_at: null })
-        .eq('id', applicationId)
-      return { success: false, error: 'This project has reached its maximum number of teams' }
+
+      revalidatePath('/student/search')
+      revalidatePath('/student/dashboard')
+      revalidatePath('/student/projects')
+      revalidatePath(`/student/projects/${application.project_id}`)
+      revalidatePath('/student', 'layout')
+      revalidatePath('/company/dashboard')
+      revalidatePath(`/company/projects/${application.project_id}`)
+      return { success: true, autoApproved: true }
+    }
+
+    if (autoDecision === 'REJECTED') {
+      if (teamMembers.length > 0) {
+        Promise.all(
+          teamMembers.map(member => {
+            const memberUser = member.users as any
+            return sendApplicationRejected({
+              toEmail: memberUser.email,
+              toName: memberUser.name || 'Student',
+              projectTitle: project.title,
+              companyName: company.name,
+            })
+          })
+        ).catch(error => {
+          console.error('Failed to send rejection emails for OPEN project:', error)
+        })
+      }
+
+      revalidatePath('/student/search')
+      revalidatePath('/student/dashboard')
+      return {
+        success: false,
+        error: 'This project is at capacity and automatically rejected your team.',
+      }
     }
   } else {
     // CLOSED project - notify company
@@ -391,8 +458,9 @@ export async function submitApplication(applicationId: string) {
 
   revalidatePath('/student/search')
   revalidatePath('/student/dashboard')
+  revalidatePath('/student', 'layout')
   revalidatePath('/company/dashboard')
-  return { success: true, autoApproved: project.access_type === 'OPEN' }
+  return { success: true, autoApproved: false }
 }
 
 export async function withdrawApplication(applicationId: string) {
@@ -584,6 +652,9 @@ export async function acceptApplication(applicationId: string) {
   revalidatePath('/company/dashboard')
   revalidatePath(`/company/projects/${application.project_id}`)
   revalidatePath('/student/dashboard')
+  revalidatePath('/student/projects')
+  revalidatePath(`/student/projects/${application.project_id}`)
+  revalidatePath('/student', 'layout')
   return { success: true }
 }
 

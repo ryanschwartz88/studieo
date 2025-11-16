@@ -13,14 +13,14 @@ export function StudentBreadcrumbs({ studentName }: StudentBreadcrumbsProps) {
   const pathname = usePathname();
   const [projectTitle, setProjectTitle] = useState<string | null>(null);
   
-  // Extract application ID if on an application page
-  const applicationId = pathname.startsWith('/applications/') 
-    ? pathname.split('/')[2] 
+  // Extract project ID if on a project page
+  const projectId = pathname.startsWith('/student/projects/') 
+    ? pathname.split('/')[3] 
     : null;
   
-  // Fetch project title if viewing an application
+  // Fetch project title if viewing a project
   useEffect(() => {
-    if (!applicationId) {
+    if (!projectId) {
       setProjectTitle(null);
       return;
     }
@@ -28,25 +28,25 @@ export function StudentBreadcrumbs({ studentName }: StudentBreadcrumbsProps) {
     const fetchProjectTitle = async () => {
       const supabase = createClient();
       const { data } = await supabase
-        .from('applications')
-        .select('projects(title)')
-        .eq('id', applicationId)
+        .from('projects')
+        .select('title')
+        .eq('id', projectId)
         .single();
       
-      if (data && data.projects && 'title' in data.projects) {
-        setProjectTitle((data.projects as { title: string }).title);
+      if (data) {
+        setProjectTitle(data.title);
       }
     };
     
     fetchProjectTitle();
-  }, [applicationId]);
+  }, [projectId]);
   
   // Determine the current page name based on pathname
   const getPageInfo = () => {
     if (pathname === '/student/dashboard') return { main: 'Dashboard' };
     if (pathname.startsWith('/student/search')) return { main: 'Browse' };
     if (pathname === '/student/profile') return { main: 'Profile' };
-    if (applicationId) {
+    if (projectId) {
       return { 
         main: projectTitle || 'Loading...',
       };

@@ -119,11 +119,10 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
       ].join(',')
     )
     .eq('id', id)
-    .eq('status', 'ACCEPTING') // Students can only view ACCEPTING projects
+    // Students can view ACCEPTING projects or projects they have accepted applications for
     .single<Project>()
 
   if (projectError || !project) {
-    console.error('Project fetch error:', projectError)
     return (
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-2xl font-semibold">Project not found</h1>
@@ -350,7 +349,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                 {existingApplication.status === 'PENDING' ? 'Created' : 'Applied'} {formatDate(existingApplication.submitted_at || existingApplication.created_at)}
               </p>
             </div>
-          ) : (
+          ) : project.status === 'ACCEPTING' ? (
             <ApplyButton 
               project={{
                 id: project.id,
@@ -361,6 +360,13 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
               studentLimits={studentLimits}
               currentUser={currentUser}
             />
+          ) : (
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
+              <p className="text-sm font-medium text-muted-foreground">
+                This project is no longer accepting applications
+              </p>
+            </div>
           )}
           
           {project.status && (

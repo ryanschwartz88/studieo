@@ -130,7 +130,7 @@ export function ApplyModal({ project, studentLimits, currentUser, onClose }: App
       if (result.success) {
         toast.success('Application created successfully!')
         onClose()
-        router.push(`/student/search/projects/${project.id}`)
+        router.push(`/student/projects/${project.id}`)
         router.refresh()
       } else {
         toast.error(result.error || 'Failed to create application')

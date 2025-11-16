@@ -31,8 +31,8 @@ export default async function StudentLayout({
   // 4. Fetch student data
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let projects: { applicationId: string; projectTitle: string; applicationStatus: string }[] = [];
-  let applications: { id: string; projectTitle: string; status: string }[] = [];
+  let projects: { applicationId: string; projectId: string; projectTitle: string; applicationStatus: string }[] = [];
+  let applications: { id: string; projectId: string; projectTitle: string; status: string }[] = [];
   let userName = user?.email?.split('@')[0] || 'Student';
   let schoolName = 'Student';
   
@@ -62,41 +62,152 @@ export default async function StudentLayout({
       }
     }
     
-    // Fetch projects where student has accepted applications
-    const { data: projectsData } = await supabase
+    // Fetch projects where student has accepted applications (as team lead)
+    // Show all projects where application status is ACCEPTED, regardless of project status
+    const { data: leadProjectsData, error: leadError } = await supabase
       .from('applications')
-      .select('id, status, projects(title)')
+      .select('id, status, project_id, projects(id, title, status)')
       .eq('team_lead_id', user.id)
       .eq('status', 'ACCEPTED')
       .order('updated_at', { ascending: false });
     
-    if (projectsData) {
-      projects = projectsData
-        .filter(app => app.projects && 'title' in app.projects)
-        .map(app => ({
-          applicationId: app.id,
-          projectTitle: (app.projects as unknown as { title: string }).title,
-          applicationStatus: app.status,
-        }));
+    if (leadError) {
+      console.error('Error fetching lead projects:', leadError);
     }
     
-    // Fetch active applications (pending or submitted)
-    const { data: applicationsData } = await supabase
+    console.log('Lead projects data:', leadProjectsData);
+    
+    // Fetch projects where student is a team member
+    // Show all projects where application status is ACCEPTED, regardless of project status
+    const { data: memberProjectsData, error: memberError } = await supabase
+      .from('team_members')
+      .select(`
+        application_id,
+        applications!inner(
+          id,
+          status,
+          project_id,
+          projects(id, title, status)
+        )
+      `)
+      .eq('student_id', user.id)
+      .eq('invite_status', 'ACCEPTED')
+      .eq('applications.status', 'ACCEPTED');
+    
+    if (memberError) {
+      console.error('Error fetching member projects:', memberError);
+    }
+    
+    console.log('Member projects data:', memberProjectsData);
+    
+    // Combine and deduplicate projects
+    const projectsMap = new Map();
+    
+    if (leadProjectsData) {
+      leadProjectsData
+        .filter(app => app.projects && 'title' in app.projects)
+        .forEach(app => {
+          const project = app.projects as unknown as { id: string; title: string; status: string };
+          // Use project status for display (ACCEPTING, IN_PROGRESS, COMPLETED, etc.)
+          const displayStatus = project.status || 'ACCEPTED';
+          projectsMap.set(app.id, {
+            applicationId: app.id,
+            projectId: project.id,
+            projectTitle: project.title,
+            applicationStatus: displayStatus,
+          });
+        });
+    }
+    
+    if (memberProjectsData) {
+      memberProjectsData
+        .filter(item => {
+          const app = item.applications as any;
+          return app?.projects && 'title' in app.projects;
+        })
+        .forEach(item => {
+          const app = item.applications as any;
+          const project = app.projects as { id: string; title: string; status: string };
+          if (!projectsMap.has(app.id)) {
+            // Use project status for display (ACCEPTING, IN_PROGRESS, COMPLETED, etc.)
+            const displayStatus = project.status || 'ACCEPTED';
+            projectsMap.set(app.id, {
+              applicationId: app.id,
+              projectId: project.id,
+              projectTitle: project.title,
+              applicationStatus: displayStatus,
+            });
+          }
+        });
+    }
+    
+    projects = Array.from(projectsMap.values());
+    
+    console.log('Final projects array:', projects);
+    
+    // Fetch active applications (pending or submitted) - as team lead
+    const { data: leadApplicationsData } = await supabase
       .from('applications')
-      .select('id, status, projects(title)')
+      .select('id, status, project_id, projects(id, title)')
       .eq('team_lead_id', user.id)
       .in('status', ['PENDING', 'SUBMITTED'])
       .order('updated_at', { ascending: false });
     
-    if (applicationsData) {
-      applications = applicationsData
+    // Fetch active applications where student is a team member (including PENDING invites)
+    const { data: memberApplicationsData } = await supabase
+      .from('team_members')
+      .select(`
+        application_id,
+        invite_status,
+        applications!inner(
+          id,
+          status,
+          project_id,
+          projects(id, title)
+        )
+      `)
+      .eq('student_id', user.id)
+      .in('invite_status', ['PENDING', 'ACCEPTED'])
+      .in('applications.status', ['PENDING', 'SUBMITTED']);
+    
+    // Combine and deduplicate applications
+    const applicationsMap = new Map();
+    
+    if (leadApplicationsData) {
+      leadApplicationsData
         .filter(app => app.projects && 'title' in app.projects)
-        .map(app => ({
-          id: app.id,
-          projectTitle: (app.projects as unknown as { title: string }).title,
-          status: app.status,
-        }));
+        .forEach(app => {
+          const project = app.projects as unknown as { id: string; title: string };
+          applicationsMap.set(app.id, {
+            id: app.id,
+            projectId: project.id,
+            projectTitle: project.title,
+            status: app.status,
+          });
+        });
     }
+    
+    if (memberApplicationsData) {
+      memberApplicationsData
+        .filter(item => {
+          const app = item.applications as any;
+          return app?.projects && 'title' in app.projects;
+        })
+        .forEach(item => {
+          const app = item.applications as any;
+          const project = app.projects as { id: string; title: string };
+          if (!applicationsMap.has(app.id)) {
+            applicationsMap.set(app.id, {
+              id: app.id,
+              projectId: project.id,
+              projectTitle: project.title,
+              status: app.status,
+            });
+          }
+        });
+    }
+    
+    applications = Array.from(applicationsMap.values());
   }
   
   const initials = userName
@@ -142,8 +253,8 @@ export default async function StudentLayout({
         </SidebarHeader>
         <SidebarContent>
           <NavigationButtons />
-          <ProjectsMenu projects={projects} />
-          <ApplicationsMenu applications={applications} />
+          <ProjectsMenu projects={projects} count={projects.length} maxCount={3} />
+          <ApplicationsMenu applications={applications} count={applications.length} maxCount={20} />
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>

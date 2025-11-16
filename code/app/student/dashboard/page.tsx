@@ -198,7 +198,7 @@ export default async function StudentDashboardPage() {
                       className="w-full mt-4"
                       asChild
                     >
-                      <Link href={`/student/search/projects/${project?.id}`}>
+                      <Link href={`/student/projects/${project?.id}`}>
                         View Project
                       </Link>
                     </Button>
@@ -266,7 +266,7 @@ export default async function StudentDashboardPage() {
                       className="w-full"
                       asChild
                     >
-                      <Link href={`/student/search/projects/${project?.id}`}>
+                      <Link href={`/student/projects/${project?.id}`}>
                         View Application
                       </Link>
                     </Button>
@@ -322,7 +322,7 @@ export default async function StudentDashboardPage() {
                     <span>Team: {project.min_students}-{project.max_students}</span>
                   </div>
                   <Button variant="default" size="sm" className="w-full" asChild>
-                    <Link href={`/student/search/projects/${project.id}`}>
+                    <Link href={`/student/projects/${project.id}`}>
                       View Project
                     </Link>
                   </Button>

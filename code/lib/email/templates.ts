@@ -78,7 +78,18 @@ export async function sendTeamInvite(params: {
   applicationId: string
 }) {
   const baseUrl = await getBaseUrl()
-  const applicationUrl = `${baseUrl}/applications/${params.applicationId}`
+  
+  // Fetch project_id from application
+  const { createClient } = await import('@/lib/supabase/server')
+  const supabase = await createClient()
+  const { data: application } = await supabase
+    .from('applications')
+    .select('project_id')
+    .eq('id', params.applicationId)
+    .single()
+  
+  const projectId = application?.project_id
+  const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
   
   const content = `
     <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
@@ -126,7 +137,18 @@ export async function sendApplicationSubmitted(params: {
   needsConfirmation: boolean
 }) {
   const baseUrl = await getBaseUrl()
-  const applicationUrl = `${baseUrl}/applications/${params.applicationId}`
+  
+  // Fetch project_id from application
+  const { createClient } = await import('@/lib/supabase/server')
+  const supabase = await createClient()
+  const { data: application } = await supabase
+    .from('applications')
+    .select('project_id')
+    .eq('id', params.applicationId)
+    .single()
+  
+  const projectId = application?.project_id
+  const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
   
   const confirmationText = params.needsConfirmation 
     ? `
@@ -198,7 +220,18 @@ export async function sendApplicationAccepted(params: {
   applicationId: string
 }) {
   const baseUrl = await getBaseUrl()
-  const applicationUrl = `${baseUrl}/applications/${params.applicationId}`
+  
+  // Fetch project_id from application
+  const { createClient } = await import('@/lib/supabase/server')
+  const supabase = await createClient()
+  const { data: application } = await supabase
+    .from('applications')
+    .select('project_id')
+    .eq('id', params.applicationId)
+    .single()
+  
+  const projectId = application?.project_id
+  const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
   
   const content = `
     <h2 style="color: #16a34a; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
@@ -413,7 +446,18 @@ export async function sendTeamMemberConfirmed(params: {
   applicationId: string
 }) {
   const baseUrl = await getBaseUrl()
-  const applicationUrl = `${baseUrl}/applications/${params.applicationId}`
+  
+  // Fetch project_id from application
+  const { createClient } = await import('@/lib/supabase/server')
+  const supabase = await createClient()
+  const { data: application } = await supabase
+    .from('applications')
+    .select('project_id')
+    .eq('id', params.applicationId)
+    .single()
+  
+  const projectId = application?.project_id
+  const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
   
   const content = `
     <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
