@@ -76,7 +76,7 @@ export default async function CompanySettingsPage() {
     .order('created_at', { ascending: false });
   
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="w-full p-6 max-w-6xl mx-auto">
       <CompanyHeader company={company} userCount={companyUsers?.length || 0} />
       <Separator className="my-6" />
       <RecentProjects projects={recentProjects || []} />

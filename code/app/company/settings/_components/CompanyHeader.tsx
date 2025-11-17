@@ -117,7 +117,7 @@ export function CompanyHeader({ company, userCount }: CompanyHeaderProps) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4">
       <div className="flex items-start gap-6">
         <div className="relative">
           {logoPreview && !imageError ? (

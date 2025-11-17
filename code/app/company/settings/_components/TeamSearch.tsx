@@ -102,7 +102,7 @@ function UserModal({ user }: { user: User }) {
                 </AvatarFallback>
               </Avatar>
             }
-            className="hover:shadow-lg transition-shadow"
+            className="hover:shadow-lg transition-shadow p-3"
             data-testid={`user-result-${user.id}`}
           />
         </div>
@@ -212,7 +212,7 @@ export function TeamSearch({ users }: TeamSearchProps) {
       {filteredUsers.length === 0 ? (
         <p className="text-sm text-muted-foreground">No team members found.</p>
       ) : (
-        <BentoGrid>
+        <BentoGrid className="md:auto-rows-auto gap-3">
           {filteredUsers.map((user) => (
             <UserModal key={user.id} user={user} />
           ))}

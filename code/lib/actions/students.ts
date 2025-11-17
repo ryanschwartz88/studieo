@@ -147,6 +147,7 @@ export async function uploadResume(file: File) {
 /**
  * Get signed URL for student resume
  * Used to download/view resumes
+ * Uses signed URLs to work with RLS policies on private bucket
  */
 export async function getResumeUrl(userId: string) {
   const supabase = await createClient();
@@ -157,7 +158,7 @@ export async function getResumeUrl(userId: string) {
     .from('resumes')
     .createSignedUrl(filePath, 3600); // Valid for 1 hour
   
-  if (error) {
+  if (error || !data) {
     return { success: false, error: 'Failed to get resume URL' };
   }
   
@@ -252,5 +253,90 @@ export async function searchStudents(query: string = '') {
   }
   
   return { success: true, students: data || [] };
+}
+
+/**
+ * Get detailed student profile information by user ID
+ * Used for viewing other students' public profiles
+ */
+export async function getStudentDetails(userId: string) {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+  
+  // Fetch user and student profile data
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('id, name, email')
+    .eq('id', userId)
+    .single();
+  
+  if (userError || !userData) {
+    return { success: false, error: 'User not found' };
+  }
+  
+  // Fetch student profile (may not exist if onboarding incomplete)
+  const { data: profileData, error: profileError } = await supabase
+    .from('student_profiles')
+    .select('description, grad_date, interests, resume_url')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  // If there's an error other than "not found", log it
+  if (profileError && profileError.code !== 'PGRST116') {
+    console.error('Error fetching student profile:', profileError);
+  }
+  
+  // Fetch school name from email domain
+  let schoolName = null;
+  if (userData.email) {
+    const emailDomain = userData.email.split('@')[1];
+    const { data: schoolData } = await supabase
+      .from('allowed_school_domains')
+      .select('school_name')
+      .eq('domain', emailDomain)
+      .eq('active', true)
+      .maybeSingle();
+    
+    if (schoolData?.school_name) {
+      schoolName = schoolData.school_name;
+    }
+  }
+  
+  // Fetch projects using RPC function that bypasses RLS
+  // This allows viewing projects for any student's profile
+  const { data: projectsData, error: projectsError } = await supabase
+    .rpc('get_student_projects', { p_user_id: userId });
+  
+  if (projectsError) {
+    console.error('Error fetching student projects:', projectsError);
+  }
+  
+  // Transform the RPC result to match expected format
+  const projects = (projectsData || []).map((p: any) => ({
+    id: p.id,
+    title: p.title || 'Untitled Project',
+    status: p.status || 'ACCEPTED',
+    start_date: p.start_date || null,
+    end_date: p.end_date || null,
+    company_name: p.company_name || null,
+    company_logo_url: p.company_logo_url || null,
+  }));
+  
+  return {
+    success: true,
+    student: {
+      ...userData,
+      description: profileData?.description || null,
+      grad_date: profileData?.grad_date || null,
+      interests: profileData?.interests || null,
+      resume_url: profileData?.resume_url || null,
+      school_name: schoolName,
+      projects,
+    },
+  };
 }
 
