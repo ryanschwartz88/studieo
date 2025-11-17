@@ -1,158 +1,251 @@
-# **Studieo Master Design Doc**
+# Studieo
 
-Version: 1.0
+A two-sided marketplace connecting vetted, high-performing students from top-tier universities with companies for real-world, project-based work.
 
-Contact: Ryan Schwartz
+**For Companies:** A pipeline to high-potential talent for flexible, short-term projects.  
+**For Students:** A way to gain tangible, real-world experience, build portfolios, and connect with potential employers.
 
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and pnpm
+- Supabase account and project
+- Resend account for email notifications
+
+### Setup
+
+1. **Clone and install:**
+```bash
+cd code
+pnpm install
+```
+
+2. **Configure environment:**
+Create `.env.local` in the `code/` directory:
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Resend (for email notifications)
+RESEND_API_KEY=your_resend_api_key
+
+# App URL
+NEXT_PUBLIC_URL=http://localhost:3000
+```
+
+3. **Set up the database:**
+```bash
+# Apply migrations to your Supabase project
+npx supabase db push
+
+# Or manually apply migrations from supabase/migrations/
+```
+
+4. **Run the dev server:**
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+---
+
+## Tech Stack
+
+- **Frontend:** Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- **UI Components:** shadcn/ui + Aceternity components (compose, don't create)
+- **Backend:** Supabase (Postgres + Auth + Storage + RLS)
+- **Email:** Resend for transactional emails
+- **Testing:** Playwright via MCP for e2e tests
+
+---
+
+## Project Structure
+
+```
+studieo/
+├── code/                    # Next.js frontend application
+│   ├── app/                # App Router routes
+│   │   ├── (auth)/         # Authentication flows
+│   │   ├── student/        # Student-only routes
+│   │   └── company/        # Company-only routes
+│   ├── components/         # UI components (shadcn + Aceternity)
+│   ├── lib/                # Utilities, actions, schemas
+│   └── package.json
+├── supabase/               # Database migrations and config
+│   └── migrations/         # SQL migration files
+└── tests/                  # E2E tests (Playwright)
+```
+
+For detailed architecture guidance, see:
+- **`AGENTS.md`** - Global project overview and principles
+- **`code/AGENTS.md`** - Frontend architecture and patterns
+- **`code/components/AGENTS.md`** - Component composition guidelines
+- **`supabase/AGENTS.md`** - Database schema, RLS, and backend logic
+
+---
+
+## Core Features
+
+### User Roles
+
+1. **Student**
+   - Must have a valid .edu email from a curated list of universities
+   - Can be on max 3 active projects (applied or in-progress) at once
+   - Browse projects, apply with teams, manage applications
+
+2. **Company User**
+   - Must have a work email (no generic providers like gmail.com)
+   - Auto-associated with company by email domain (e.g., user@google.com → "Google")
+   - Post projects, review applications, manage teams
+
+3. **Studieo Admin** (Internal)
+   - Manually vet company profiles
+   - Manage curated list of universities
+   - Monitor platform health
+
+### Authentication & Onboarding
+
+**Student Flow:**
+- Sign up with .edu email → Domain validation against `allowed_school_domains` table
+- Email verification → Multi-step onboarding (name, grad date, resume, interests, bio)
+- If domain not allowed: "Sorry, we're not at your school yet."
+
+**Company Flow:**
+- Sign up with work email → Block generic providers (gmail, hotmail, etc.)
+- Auto-link to existing company by domain OR create new company
+- Minimal onboarding (name, role, sector)
+- New companies trigger admin email for manual vetting
+
+### Student Dashboard
+
+- **Sidebar:** Lists active projects and applications
+- **Main View:** Browse projects with search and filters
+- **Project Page:** Read-only view with "Apply" button
+- **Application Flow:**
+  1. Click "Apply" → Creates application (status: PENDING)
+  2. Upload design doc (required)
+  3. Invite team members by .edu email
+  4. Submit application → Status changes to SUBMITTED
+
+### Company Dashboard
+
+- **Layout:** ChatGPT-style sidebar with main content area
+- **Sidebar:** "Add New Project" button + projects grouped by status
+- **Main View:** Dashboard stats (open projects, pending applications, total applicants)
+- **Project Management:**
+  - Create/edit projects with multi-step form
+  - Save as draft (INCOMPLETE) or publish (OPEN)
+  - View applicants, review design docs, accept/reject teams
+
+### Application Management
+
+**Company View:**
+- Project page with two tabs: Project Info (editable) and Applicants
+- View submitted applications with team details, design docs, and answers
+- Accept/reject buttons → Updates status and notifies team
+
+**Student View:**
+- Application page shows team members, invite status, and submission state
+- Team leads can invite members (sends Resend email)
+- Invited students see invites on dashboard and can accept/decline
+
+### Settings & Profiles
+
+- **User Profile Modal:** Edit personal info (students: profile fields, companies: name/role)
+- **Company Settings Modal:** Edit shared company profile (name, website, description)
+- Shows read-only list of all users associated with company domain
+
+### Email Notifications (Resend)
+
+**To Students:**
+- `team.invite` - Invited to join application team
+- `application.accepted` - Team accepted for project (with contact info)
+- `application.rejected` - Application status update
+
+**To Companies:**
+- `project.new_application` - New team applied to project
+
+**To Admins:**
+- `admin.new_company` - New company signup needs vetting
+
+---
+
+## Key Constraints & Business Logic
+
+- **Student Project Limit:** Max 3 active projects (status: SUBMITTED, ACCEPTED, or IN_PROGRESS)
+- **Company Auto-Linking:** Users automatically join company by email domain
+- **Manual Vetting:** All companies must be manually approved by Studieo admin team
+- **File Uploads:**
+  - Resumes: `resumes` bucket (PDF, DOC, DOCX, max 5MB)
+  - Design Docs: `design_docs` bucket (PDF, PPT, PPTX, Figma links, max 10MB)
+
+---
+
+## Development Guidelines
+
+### Component Strategy
+
+**DO:**
+- Search registries first (shadcn/Aceternity)
+- Compose multiple registry components together
+- Use variants/sizes to customize appearance
+- Add minimal styling with Tailwind utilities
+
+**DON'T:**
+- Build custom components from scratch
+- Create wrappers unless absolutely necessary
+- Write custom CSS or animations (use registry patterns)
+
+### Data Flow
+
+- **Reads:** Server Components with Supabase SSR client
+- **Mutations:** Server Actions in `code/lib/actions/`
+- **Validation:** Zod schemas in `code/lib/schemas/`
+- **Security:** RLS policies on all tables, never expose service-role keys
+
+### Testing
+
+- E2E tests in `tests/e2e/` using Playwright via MCP
+- Add `data-testid` attributes to interactive elements for selectors
+
+---
+
+## Database Schema Overview
+
+**Key Tables:**
+- `companies` - Company profiles (name, domain, description, sector, vetted status)
+- `company_users` - Users associated with companies (auto-linked by email domain)
+- `student_profiles` - Student profiles (name, grad_date, resume, interests, bio)
+- `projects` - Company projects (title, description, skills, team_size, status)
+- `applications` - Student team applications (with design doc upload)
+- `team_members` - Students on application teams (with invite status)
+- `allowed_school_domains` - Whitelist of valid .edu domains
+
+**Key Enums:**
+- `project_status`: INCOMPLETE, OPEN, IN_PROGRESS, COMPLETED, CANCELLED
+- `application_status`: PENDING, SUBMITTED, ACCEPTED, REJECTED
+- `invite_status`: PENDING, ACCEPTED, DECLINED
+
+All tables have RLS enabled with least-privilege policies. See `supabase/AGENTS.md` for detailed schema documentation.
+
+---
+
+## Getting Help
+
+- **Architecture Questions:** Check the `AGENTS.md` files in relevant directories
+- **Component Questions:** See `code/components/AGENTS.md` for composition patterns
+- **Database Questions:** See `supabase/AGENTS.md` for schema and RLS details
+- **Brand/Design:** See `BRAND.md` for design system guidelines
+
+---
+
+## Contact
+
+Ryan Schwartz  
 Last Updated: October 31, 2025
-
-## **1\. Project Overview**
-
-### **1.1. Mission**
-
-Studieo is a two-sided marketplace connecting vetted, high-performing students from top-tier universities with companies for real-world, project-based work.
-
-* **For Companies:** A pipeline to high-potential talent for flexible, short-term projects.  
-* **For Students:** A way to gain tangible, real-world experience, build their portfolios, and connect with potential employers.
-
-### **1.2. Core Principles**
-
-* **Exclusivity & Quality:** Both sides are vetted. Students must have a valid .edu email from a curated list. Companies must have a valid work email and are manually vetted by the Studieo admin team.  
-* **Simplicity:** The platform should be intuitive and "just work." The UI should be clean, modern, and fast.  
-* **Action-Oriented:** The goal is to move from project posting to team formation as frictionlessly as possible.
-
-## **2\. User Roles & Personas**
-
-1. **Student:**  
-   * **Who:** An undergraduate or graduate student at a supported university (e.g., @stanford.edu).  
-   * **Goal:** Find meaningful projects to build their resume, apply their skills, and potentially find a job.  
-   * **Limitations:** Can be on a maximum of 3 "active" (applied or in-progress) projects at any time.  
-2. **Company User:**  
-   * **Who:** A manager, recruiter, or team lead at a company.  
-   * **Goal:** Post a project, find a smart, capable team of students to complete it, and manage the application process.  
-   * **Auth:** Is automatically associated with their Company based on their email domain (e.g., user@google.com joins the "Google" company profile).  
-3. **Studieo Admin (Internal):**  
-   * **Who:** The Studieo founding team.  
-   * **Goal:** Manually vet and update company profiles, manage the curated list of universities, and monitor platform health.
-
-## **3\. Recommended Tech Stack**
-
-* **Framework:** **Next.js (App Router)**. Use Server Actions for mutations.  
-* **Backend & DB:** **Supabase**. Provides Auth, Database, and Storage in one platform.  
-* **Auth:** **Supabase Auth**. Will use Postgres Functions to implement custom domain-based validation.  
-* **File Storage:** **Supabase Storage**. For student resumes and project-related file uploads (e.g., design docs).  
-* **UI Components:** **Shadcn/UI**. A set of reusable, accessible, and easily themeable components.  
-* **Email:** **Resend**. For all transactional emails (invites, notifications, etc.).
-
-## **4\. Core Platform Features**
-
-This section outlines the complete functionality of the platform.
-
-### **4.1. Auth & Onboarding**
-
-1. **Student Auth:**  
-   * User signs up with an email.  
-   * **Check:** Does the email domain match the curated list of .edu domains?  
-   * If no, show an error: "Sorry, we're not at your school yet."  
-   * If yes, send confirmation email. On success, redirect to Student Onboarding.  
-2. **Student Onboarding:**  
-   * A multi-step form to create their StudentProfile.  
-   * **Fields:** name, gradDate, resume (file upload), interests/tags (for matching), description (short bio).  
-3. **Company Auth:**  
-   * User signs up with an email.  
-   * **Check 1:** Is the domain a generic provider (gmail.com, hotmail.com, etc.)? If yes, show error: "Please use a valid work email."  
-   * **Check 2:** Does a Company with this domain (e.g., acme.com) already exist?  
-     1. If **yes**, link this new User to the existing Company. Redirect to the company dashboard.  
-     2. If **no**, proceed to Company Onboarding.  
-4. **Company Onboarding (Manual Vetting Flow):**  
-   * A minimal form to reduce friction.  
-   * **Fields:** name, role (at the company), sector  
-   * **Backend:**  
-     1. Creates a new Company record with name (from user) and domain (from email). All other fields (description) are NULL.  
-     2. Links the new User to this new Company.  
-     3. **Triggers Admin Email (via Resend) to admin@studieo.com**: "New Company Signup: \[Company Name\] (\[domain\]). Please vet and update their profile."  
-   * **Admin Action:** The admin team logs into the Supabase dashboard, finds the new Company, and manually fills in the sector, website, and description to ensure quality.
-
-### **4.2. Company Dashboard**
-
-* **Layout:** A "ChatGPT-style" layout with a main content area and a collapsible sidebar.  
-* **Sidebar:**  
-  * "Add New Project" button at the top.  
-  * A list of all Projects associated with the user's Company.  
-  * Projects are grouped by ProjectStatus (e.g., Open, In Progress, Completed).  
-* **Main View (Default):**  
-  * A dashboard showing high-level stats: "Total Open Projects," "Pending Applications," "Total Applicants."  
-* **Add/Edit Project Page (/company/projects/new):**  
-  * A comprehensive, multi-step form to capture all project details (title, summary, description, type, tags, deliverables, skills, contact info, time range, team size, collaboration style, etc.).  
-  * Can be saved as a draft (status: INCOMPLETE) or "Published" (status: OPEN).
-
-### **4.3. Student Dashboard & Project Browsing**
-
-* **Layout:** Similar sidebar layout to the company dashboard.  
-* **Sidebar:**  
-  * Lists projects the student is involved in.  
-  * Grouped by "My Active Projects" (status ACCEPTED or IN\_PROGRESS) and "My Applications" (status SUBMITTED).  
-* **Main View (Default): Browse Projects (/browse)**  
-  * The primary discovery page for students.  
-  * Includes a search bar and filters (Project Type, Skills Needed, Company Sector).  
-  * Projects are displayed as cards with key info (title, company, summary, team size).  
-* **Project Page (Student View):**  
-  * A read-only view of the full project details.  
-  * Displays all public information, including description, deliverables, and skills.  
-  * A prominent "Apply" button.
-
-### **4.4. Application & Team Management (Student Flow)**
-
-1. **Start Application:** A student (the "Team Lead") clicks "Apply" on a Project Page.  
-   * This creates a new Application record with status: 'PENDING'.  
-   * The Team Lead is automatically added as a TeamMember.  
-2. **Application Page (/applications/\[id\]):**  
-   * The Team Lead is redirected here to build their application.  
-   * **Upload Design Doc:** A required file-upload field.  
-   * **Optional Questions:** Text areas for any questions the company added (if any).  
-   * **Invite Team:** An input to invite other students by their .edu email.  
-     * Inviting a student sends them a Resend email and creates a TeamMember record with inviteStatus: 'PENDING'.  
-   * **Team List:** Shows all invited members and their inviteStatus (Pending, Accepted).  
-   * Invited students see the invite on their dashboard and can "Accept" or "Decline."  
-3. **Submit Application:**  
-   * The Team Lead can submit the application at any time (even with pending invites).  
-   * On submit, the Application status changes to SUBMITTED.  
-   * This triggers a notification to the company.
-
-### **4.5. Project & Applicant Management (Company Flow)**
-
-* **Project Page (Company View): (/company/projects/\[id\])**  
-  * This page has two tabs:  
-  * **Tab 1: Project Info:** An editable form to update the project's details (e.g., fix a typo, add a resource link).  
-  * **Tab 2: Applicants:**  
-    * A list of all Applications with status: 'SUBMITTED'.  
-    * Each item shows the Team Lead, team size, and submission date.  
-    * Clicking an application opens a modal or new view to see the full details:  
-      * List of all team members (and their profiles/resumes).  
-      * A link to download their "Design Doc."  
-      * Answers to optional questions.  
-    * "Accept" and "Reject" buttons are present.  
-    * Clicking "Accept" changes the Application status to ACCEPTED and notifies the student team. (This also fills one of the project's "available team slots").
-
-### **4.6. Settings & Profile Management**
-
-* **Trigger:** A "Settings" or "Profile" button located at the bottom of the main sidebar for both user types.  
-* **User Profile Modal (for all users):**  
-  * **Student:** Can edit all StudentProfile fields (name, gradDate, resume, interests, description).  
-  * **Company User:** Can edit their name and role.  
-* **Company Settings Modal (Company users only):**  
-  * Allows company members to edit their shared Company profile.  
-  * **Fields:** name, website, description. (This is editable by them *after* the admin's initial manual vetting).  
-  * Also shows a read-only list of all Users associated with their company domain.
-
-### **4.7. System-Wide Notifications (via Resend)**
-
-1. **To Students:**  
-   * team.invite: "Ryan invited you to join a team for Project X."  
-   * application.accepted: "Your team was accepted for Project X\! Here is the contact info..."  
-   * application.rejected: "An update on your application for Project X."  
-2. **To Company Users:**  
-   * project.new\_application: "You have a new application for Project X."  
-3. **To Studieo Admins:**  
-   * admin.new\_company: "New Company Signup: \[Company Name\]. Please vet their profile."
-
