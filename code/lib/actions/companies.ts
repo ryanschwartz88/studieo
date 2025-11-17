@@ -37,7 +37,7 @@ export async function updateCompany(data: UpdateCompanyInput) {
   if (!result.success) {
     return {
       success: false,
-      error: result.error.errors[0]?.message || 'Invalid input',
+      error: (result as any).error?.issues?.[0]?.message || 'Invalid input',
     };
   }
   
@@ -241,7 +241,6 @@ export async function getUserProjects(userId: string) {
     return { success: false, error: `Failed to fetch user projects: ${fetchError.message}` };
   }
   
-  console.log('User projects fetched:', projects?.length || 0, 'projects for user', userId);
   
   return { success: true, data: projects || [] };
 }

@@ -1,10 +1,99 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, TrendingUp, Briefcase, CheckCircle2, Clock } from 'lucide-react'
+import { Briefcase, CheckCircle2, Clock } from 'lucide-react'
 import Link from 'next/link'
+import type { Project, StudentLimits } from '@/app/student/search/_components/types'
+import { getSavedProjects } from '@/lib/actions/saved-projects'
+import { checkStudentLimits } from '@/lib/actions/applications'
+import { DashboardApplications } from './_components/DashboardApplications'
+
+export type CurrentUser = {
+  id: string
+  name: string | null
+  email: string
+  school_name: string | null
+}
+
+export type ActiveApplicationItem = {
+  applicationId: string
+  status: string
+  inviteStatus: string | null
+  createdAt: string | null
+  submittedAt: string | null
+  project: Project
+}
+
+export type AcceptedProjectItem = {
+  applicationId: string
+  project: Project & {
+    contact_name?: string | null
+    contact_email?: string | null
+  }
+}
+
+function mapProjectFromRow(row: any): Project {
+  if (!row) {
+    return {
+      id: '',
+      title: null,
+      short_summary: null,
+      detailed_description: null,
+      deliverables: null,
+      project_type: null,
+      skills_needed: null,
+      min_students: null,
+      max_students: null,
+      weekly_hours: null,
+      max_teams: null,
+      access_type: null,
+      status: null,
+      start_date: null,
+      end_date: null,
+      updated_at: null,
+      company_id: null,
+      collaboration_style: null,
+      location: null,
+      resource_links: null,
+      resource_files: null,
+      view_count: null,
+      companies: null,
+    }
+  }
+
+  return {
+    id: row.id,
+    title: row.title ?? null,
+    short_summary: row.short_summary ?? null,
+    detailed_description: row.detailed_description ?? null,
+    deliverables: row.deliverables ?? null,
+    project_type: row.project_type ?? null,
+    skills_needed: row.skills_needed ?? null,
+    min_students: row.min_students ?? null,
+    max_students: row.max_students ?? null,
+    weekly_hours: row.weekly_hours ?? null,
+    max_teams: row.max_teams ?? null,
+    access_type: row.access_type ?? null,
+    status: row.status ?? null,
+    start_date: row.start_date ?? null,
+    end_date: row.end_date ?? null,
+    updated_at: row.updated_at ?? null,
+    company_id: row.company_id ?? null,
+    collaboration_style: row.collaboration_style ?? null,
+    location: row.location ?? null,
+    resource_links: row.resource_links ?? null,
+    resource_files: row.resource_files ?? null,
+    view_count: row.view_count ?? null,
+    companies: row.companies
+      ? {
+          name: row.companies.name ?? null,
+          logo_url: row.companies.logo_url ?? null,
+        }
+      : null,
+    is_saved: row.is_saved,
+  }
+}
 
 export default async function StudentDashboardPage() {
   const supabase = await createClient()
@@ -29,18 +118,65 @@ export default async function StudentDashboardPage() {
 
   const userName = userData?.name || 'Student'
 
+  // Get current user's school name
+  let schoolName: string | null = null
+  if (user.email) {
+    const emailDomain = user.email.split('@')[1]
+    const { data: schoolData } = await supabase
+      .from('allowed_school_domains')
+      .select('school_name')
+      .eq('domain', emailDomain)
+      .eq('active', true)
+      .single()
+
+    schoolName = schoolData?.school_name || null
+  }
+
+  const currentUser: CurrentUser = {
+    id: user.id,
+    name: userData?.name || null,
+    email: user.email || '',
+    school_name: schoolName,
+  }
+
+  // Saved projects (for bookmark state)
+  const savedProjectIds = await getSavedProjects()
+
+  // Student limits (for application creation in modal)
+  const studentLimits: StudentLimits = await checkStudentLimits(user.id)
+
+  // Fetch total count of all available projects
+  const { count: totalAvailableProjects } = await supabase
+    .from('projects')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'ACCEPTING')
+
   // Fetch trending projects (top 6 by view count)
-  const { data: trendingProjects } = await supabase
+  const { data: trendingProjectsRaw } = await supabase
     .from('projects')
     .select(`
       id,
       title,
       short_summary,
+      detailed_description,
+      deliverables,
       project_type,
-      view_count,
+      skills_needed,
       min_students,
       max_students,
+      weekly_hours,
+      max_teams,
+      access_type,
+      status,
+      start_date,
+      end_date,
+      updated_at,
+      view_count,
       company_id,
+      collaboration_style,
+      location,
+      resource_links,
+      resource_files,
       companies(name, logo_url)
     `)
     .eq('status', 'ACCEPTING')
@@ -48,44 +184,136 @@ export default async function StudentDashboardPage() {
     .limit(6)
 
   // Fetch active applications (PENDING or SUBMITTED)
-  const { data: activeApplications } = await supabase
+  const { data: activeApplicationsRaw } = await supabase
     .from('team_members')
     .select(`
       application_id,
       invite_status,
-      applications(
+      applications!inner(
         id,
         status,
         created_at,
         submitted_at,
         project_id,
-        projects(title, company_id, companies(name))
+        projects!inner(
+          id,
+          title,
+          short_summary,
+          detailed_description,
+          deliverables,
+          project_type,
+          skills_needed,
+          min_students,
+          max_students,
+          weekly_hours,
+          max_teams,
+          access_type,
+          status,
+          start_date,
+          end_date,
+          updated_at,
+          view_count,
+          company_id,
+          collaboration_style,
+          location,
+          resource_links,
+          resource_files,
+          contact_name,
+          contact_email,
+          companies(name, logo_url)
+        )
       )
     `)
     .eq('student_id', user.id)
     .in('applications.status', ['PENDING', 'SUBMITTED'])
 
   // Fetch accepted projects
-  const { data: acceptedProjects } = await supabase
+  const { data: acceptedProjectsRaw } = await supabase
     .from('team_members')
     .select(`
       application_id,
-      applications(
+      applications!inner(
         id,
         status,
         project_id,
-        projects(
+        projects!inner(
+          id,
           title,
           short_summary,
+          detailed_description,
+          deliverables,
+          project_type,
+          skills_needed,
+          min_students,
+          max_students,
+          weekly_hours,
+          max_teams,
+          access_type,
+          status,
+          start_date,
+          end_date,
+          updated_at,
+          view_count,
+          company_id,
+          collaboration_style,
+          location,
+          resource_links,
+          resource_files,
           contact_name,
           contact_email,
-          company_id,
-          companies(name)
+          companies(name, logo_url)
         )
       )
     `)
     .eq('student_id', user.id)
     .eq('applications.status', 'ACCEPTED')
+
+  // Normalize trending projects
+  const trendingProjects: Project[] = (trendingProjectsRaw || []).map((project: any) =>
+    mapProjectFromRow(project)
+  )
+
+  // Normalize active applications and filter out incomplete rows
+  const activeApplications: ActiveApplicationItem[] = (activeApplicationsRaw || [])
+    .map((item: any) => {
+      const app = item.applications as any
+      const project = app?.projects as any
+
+      if (!app || !project) {
+        return null
+      }
+
+      return {
+        applicationId: item.application_id,
+        status: app.status,
+        inviteStatus: item.invite_status,
+        createdAt: app.created_at,
+        submittedAt: app.submitted_at,
+        project: mapProjectFromRow(project),
+      } as ActiveApplicationItem
+    })
+    .filter((item: ActiveApplicationItem | null): item is ActiveApplicationItem => item !== null)
+
+  // Normalize accepted projects
+  const acceptedProjects: AcceptedProjectItem[] = (acceptedProjectsRaw || [])
+    .map((item: any) => {
+      const app = item.applications as any
+      const project = app?.projects as any
+
+      if (!app || !project) {
+        return null
+      }
+
+      const mappedProject = mapProjectFromRow(project) as AcceptedProjectItem['project']
+      mappedProject.contact_name = project.contact_name ?? null
+      mappedProject.contact_email = project.contact_email ?? null
+
+      return {
+        applicationId: item.application_id,
+        project: mappedProject,
+      } as AcceptedProjectItem
+    })
+    .filter((item: AcceptedProjectItem | null): item is AcceptedProjectItem => item !== null)
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -137,7 +365,7 @@ export default async function StudentDashboardPage() {
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{trendingProjects?.length || 0}</div>
+            <div className="text-2xl font-bold">{totalAvailableProjects || 0}</div>
             <p className="text-xs text-muted-foreground">
               Currently accepting applications
             </p>
@@ -145,209 +373,14 @@ export default async function StudentDashboardPage() {
         </Card>
       </div>
 
-      {/* Accepted Projects */}
-      {acceptedProjects && acceptedProjects.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">My Projects</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {acceptedProjects.map((item) => {
-              const app = item.applications as any
-              const project = app?.projects
-              const company = project?.companies
-              
-              return (
-                <Card key={item.application_id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{project?.title}</CardTitle>
-                        <CardDescription>{company?.name}</CardDescription>
-                      </div>
-                      <Badge className="bg-green-100 text-green-700 border-green-200">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Active
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {project?.short_summary && (
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {project.short_summary}
-                      </p>
-                    )}
-                    <div className="space-y-2">
-                      <div className="text-sm">
-                        <span className="font-medium">Contact:</span>{' '}
-                        <span className="text-muted-foreground">{project?.contact_name}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Email:</span>{' '}
-                        <a 
-                          href={`mailto:${project?.contact_email}`}
-                          className="text-primary hover:underline"
-                        >
-                          {project?.contact_email}
-                        </a>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-4"
-                      asChild
-                    >
-                      <Link href={`/student/projects/${project?.id}`}>
-                        View Project
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Active Applications */}
-      {activeApplications && activeApplications.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Active Applications</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {activeApplications.map((item) => {
-              const app = item.applications as any
-              const project = app?.projects
-              const company = project?.companies
-              
-              return (
-                <Card key={item.application_id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{project?.title}</CardTitle>
-                        <CardDescription>{company?.name}</CardDescription>
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          app?.status === 'SUBMITTED' 
-                            ? 'border-blue-500 text-blue-700' 
-                            : 'border-gray-500 text-gray-700'
-                        }
-                      >
-                        <Clock className="h-3 w-3 mr-1" />
-                        {app?.status === 'SUBMITTED' ? 'Under Review' : 'Draft'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 mb-4">
-                      <div className="text-sm">
-                        <span className="font-medium">Status:</span>{' '}
-                        <span className="text-muted-foreground">
-                          {app?.status === 'SUBMITTED' 
-                            ? 'Awaiting company review' 
-                            : 'Application in progress'
-                          }
-                        </span>
-                      </div>
-                      {item.invite_status === 'PENDING' && app?.status === 'SUBMITTED' && (
-                        <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
-                          <span className="font-medium">Action Required:</span> Confirm your participation
-                        </div>
-                      )}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                      asChild
-                    >
-                      <Link href={`/student/projects/${project?.id}`}>
-                        View Application
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Trending Projects */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-6 w-6" />
-            <h2 className="text-2xl font-bold">Trending Projects</h2>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/student/search">Browse All</Link>
-          </Button>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {trendingProjects?.map((project) => {
-            const company = project.companies as any
-            
-            return (
-              <Card key={project.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
-                  <CardDescription className="flex items-center justify-between">
-                    <span>{company?.name}</span>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Eye className="h-3 w-3" />
-                      {project.view_count}
-                    </div>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {project.short_summary && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                      {project.short_summary}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {project.project_type?.slice(0, 2).map((type: string) => (
-                      <Badge key={type} variant="secondary">
-                        {type}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                    <span>Team: {project.min_students}-{project.max_students}</span>
-                  </div>
-                  <Button variant="default" size="sm" className="w-full" asChild>
-                    <Link href={`/student/projects/${project.id}`}>
-                      View Project
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Empty State */}
-      {!activeApplications?.length && !acceptedProjects?.length && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No active applications yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Start exploring projects and apply to get started
-            </p>
-            <Button asChild>
-              <Link href="/student/search">Browse Projects</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <DashboardApplications
+        acceptedProjects={acceptedProjects}
+        activeApplications={activeApplications}
+        trendingProjects={trendingProjects}
+        savedProjectIds={savedProjectIds}
+        studentLimits={studentLimits}
+        currentUser={currentUser}
+      />
     </div>
   )
 }

@@ -75,7 +75,6 @@ export default async function StudentLayout({
       console.error('Error fetching lead projects:', leadError);
     }
     
-    console.log('Lead projects data:', leadProjectsData);
     
     // Fetch projects where student is a team member
     // Show all projects where application status is ACCEPTED, regardless of project status
@@ -97,8 +96,6 @@ export default async function StudentLayout({
     if (memberError) {
       console.error('Error fetching member projects:', memberError);
     }
-    
-    console.log('Member projects data:', memberProjectsData);
     
     // Combine and deduplicate projects
     const projectsMap = new Map();
@@ -143,7 +140,6 @@ export default async function StudentLayout({
     
     projects = Array.from(projectsMap.values());
     
-    console.log('Final projects array:', projects);
     
     // Fetch active applications (pending or submitted) - as team lead
     const { data: leadApplicationsData } = await supabase

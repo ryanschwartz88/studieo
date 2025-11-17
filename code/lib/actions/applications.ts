@@ -747,3 +747,58 @@ export async function rejectApplication(applicationId: string) {
   revalidatePath('/student/dashboard')
   return { success: true }
 }
+
+export async function getDesignDocUrl(applicationId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // Get the application to check access and get design_doc_url
+  const { data: application, error: appError } = await supabase
+    .from('applications')
+    .select('design_doc_url, team_lead_id, project_id, team_members(student_id)')
+    .eq('id', applicationId)
+    .single()
+
+  if (appError || !application) {
+    return { success: false, error: 'Application not found' }
+  }
+
+  // Check if user has access (team lead or team member)
+  const isTeamLead = application.team_lead_id === user.id
+  const isTeamMember = application.team_members?.some((tm: any) => tm.student_id === user.id)
+
+  // Check if company user has access (project owner)
+  const { data: project } = await supabase
+    .from('projects')
+    .select('company_id, company_users(user_id)')
+    .eq('id', application.project_id)
+    .single()
+
+  const isCompanyUser = project?.company_users?.some((cu: any) => cu.user_id === user.id)
+
+  if (!isTeamLead && !isTeamMember && !isCompanyUser) {
+    return { success: false, error: 'Access denied' }
+  }
+
+  if (!application.design_doc_url) {
+    return { success: false, error: 'Design document not found' }
+  }
+
+  // Extract the file path from design_doc_url (format: design_docs/{application_id}/design-doc.pdf)
+  const filePath = application.design_doc_url.replace('design_docs/', '')
+
+  // Generate signed URL (valid for 1 hour)
+  const { data: signedUrlData, error: urlError } = await supabase.storage
+    .from('design_docs')
+    .createSignedUrl(filePath, 3600)
+
+  if (urlError || !signedUrlData) {
+    return { success: false, error: 'Failed to generate document URL' }
+  }
+
+  return { success: true, url: signedUrlData.signedUrl }
+}

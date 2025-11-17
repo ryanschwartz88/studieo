@@ -29,7 +29,7 @@ export function ProjectCard({ project, onClick, onBookmarkToggle, layoutId }: Pr
     <motion.div
       layoutId={`card-${layoutId}`}
       onClick={onClick}
-      className="cursor-pointer group w-full"
+      className="cursor-pointer group w-full h-full"
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
@@ -63,25 +63,28 @@ export function ProjectCard({ project, onClick, onBookmarkToggle, layoutId }: Pr
           </div>
 
           {/* Company name, title, and logo row */}
-          <div className="flex items-start gap-4 mb-6 py-4">
-            <div className="flex-1 min-w-0 flex flex-col gap-2">
-              <motion.div layoutId={`company-${layoutId}`}>
-                <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
-                  {companyName}
-                </p>
-              </motion.div>
-              <motion.h3
-                layoutId={`title-${layoutId}`}
-                className="text-xl font-semibold text-neutral-900 dark:text-neutral-50 line-clamp-2 break-words"
-                style={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}
-              >
-                {project.title || 'Untitled Project'}
-              </motion.h3>
+          <div className="flex items-center gap-4 mb-6 flex-1 min-h-0">
+            <div className="flex-1 min-w-0 flex flex-col gap-2 justify-between min-h-[88px]">
+              <div>
+                <motion.div layoutId={`company-${layoutId}`}>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                    {companyName}
+                  </p>
+                </motion.div>
+                <motion.h3
+                  layoutId={`title-${layoutId}`}
+                  className="text-xl font-semibold text-neutral-900 dark:text-neutral-50 line-clamp-2 break-words mt-2"
+                  style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    minHeight: '3rem',
+                  }}
+                >
+                  {project.title || 'Untitled Project'}
+                </motion.h3>
+              </div>
             </div>
 
             <div className="flex-shrink-0">
@@ -97,7 +100,7 @@ export function ProjectCard({ project, onClick, onBookmarkToggle, layoutId }: Pr
           </div>
 
           {/* Project type tags */}
-          <div className="flex flex-wrap gap-2 mt-auto">
+          <div className="flex flex-wrap gap-2 mt-auto flex-shrink-0 min-h-[28px]">
             {projectTypes.length > 0 ? (
               projectTypes.map((type) => (
                 <Badge 

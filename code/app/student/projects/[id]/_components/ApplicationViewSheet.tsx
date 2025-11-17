@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -25,7 +25,7 @@ import {
 import { FileText, Users, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { confirmTeamMembership, declineTeamMembership } from '@/lib/actions/team-members'
-import { withdrawApplication } from '@/lib/actions/applications'
+import { withdrawApplication, getDesignDocUrl } from '@/lib/actions/applications'
 import { useRouter } from 'next/navigation'
 
 type TeamMember = {
@@ -64,6 +64,8 @@ export function ApplicationViewSheet({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [designDocUrl, setDesignDocUrl] = useState<string | null>(null)
+  const [loadingDocUrl, setLoadingDocUrl] = useState(false)
 
   const currentUserMember = application.team_members.find(m => m.student_id === currentUserId)
   const isLead = currentUserMember?.is_lead || false
@@ -73,6 +75,28 @@ export function ApplicationViewSheet({
   
   const totalMembers = application.team_members.length
   const confirmedMembers = application.team_members.filter(m => m.invite_status === 'ACCEPTED').length
+
+  // Fetch design doc URL when sheet opens and design doc exists
+  useEffect(() => {
+    if (open && application.design_doc_url && !designDocUrl && !loadingDocUrl) {
+      setLoadingDocUrl(true)
+      getDesignDocUrl(application.id)
+        .then((result) => {
+          if (result.success && result.url) {
+            setDesignDocUrl(result.url)
+          } else {
+            toast.error(result.error || 'Failed to load design document')
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching design doc URL:', error)
+          toast.error('Failed to load design document')
+        })
+        .finally(() => {
+          setLoadingDocUrl(false)
+        })
+    }
+  }, [open, application.design_doc_url, application.id, designDocUrl, loadingDocUrl])
 
   const handleConfirm = () => {
     startTransition(async () => {
@@ -187,12 +211,12 @@ export function ApplicationViewSheet({
 
           {/* Confirmation Alert for Team Members */}
           {needsConfirmation && !isLead && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+            <div className="bg-yellow-50 border border-yellow-200 dark:bg-yellow-950/50 dark:border-yellow-800 rounded-lg p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-yellow-700 mt-0.5" />
+                <Clock className="h-5 w-5 text-yellow-700 dark:text-yellow-500 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-yellow-900">Action Required</h4>
-                  <p className="text-sm text-yellow-800 mt-1">
+                  <h4 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">Action Required</h4>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
                     {application.status === 'PENDING' 
                       ? 'You have been invited to join this application. Please confirm your participation or decline if you don\'t want to proceed. The application will auto-submit when all members confirm.'
                       : 'Your team lead has submitted this application. Please confirm your participation or decline if you don\'t want to proceed.'}
@@ -240,12 +264,12 @@ export function ApplicationViewSheet({
 
           {/* Team Lead Status for PENDING Applications */}
           {application.status === 'PENDING' && isLead && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+            <div className="bg-muted border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-blue-700 mt-0.5" />
+                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-blue-900">Waiting for Team Confirmations</h4>
-                  <p className="text-sm text-blue-800 mt-1">
+                  <h4 className="text-sm font-semibold text-foreground">Waiting for Team Confirmations</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
                     {confirmedMembers} of {totalMembers} team members have confirmed. The application will auto-submit when all members confirm their participation.
                   </p>
                 </div>
@@ -255,7 +279,7 @@ export function ApplicationViewSheet({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    className="w-full border-destructive text-destructive/2 hover:bg-destructive hover:text-destructive-foreground"
                     disabled={isPending}
                   >
                     Withdraw Application
@@ -317,37 +341,24 @@ export function ApplicationViewSheet({
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm font-semibold">Design Document</p>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <a 
-                  href={`/api/design-docs/${application.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View Document
-                </a>
-              </Button>
+              {designDocUrl ? (
+                <Button variant="outline" size="sm" asChild>
+                  <a 
+                    href={designDocUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View Document
+                  </a>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled={loadingDocUrl}>
+                  {loadingDocUrl ? 'Loading...' : 'View Document'}
+                </Button>
+              )}
             </div>
           )}
 
-          {/* Timeline */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-semibold">Timeline</p>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span>{new Date(application.created_at).toLocaleString()}</span>
-              </div>
-              {application.submitted_at && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Submitted</span>
-                  <span>{new Date(application.submitted_at).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -114,9 +114,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   // If project not found or error, show error page
   if (projectError || !project) {
-    console.error('Project fetch error:', projectError)
-    console.error('Project ID:', id)
-    console.error('User company_id:', userData?.company_id)
+
     return (
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-2xl font-semibold">Project not found</h1>

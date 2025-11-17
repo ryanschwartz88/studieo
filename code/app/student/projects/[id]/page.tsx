@@ -220,107 +220,15 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
   
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      {/* Application Status Alert */}
-      {existingApplication && existingApplication.status === 'PENDING' && (
-        <Alert className="border-amber-200 bg-amber-50">
-          <Clock className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-900">Application In Progress</AlertTitle>
-          <AlertDescription className="text-amber-800 flex items-center justify-between gap-4">
-            <span>
-              Created on {formatDate(existingApplication.created_at)}
-              {' • '}
-              {(() => {
-                const totalMembers = existingApplication.team_members?.length || 0
-                const confirmedMembers = existingApplication.team_members?.filter((m: any) => m.invite_status === 'ACCEPTED').length || 0
-                const isLead = existingApplicationAsLead !== null
-                
-                if (totalMembers === confirmedMembers) {
-                  return isLead ? 'All team members confirmed' : 'You confirmed • Waiting for others'
-                }
-                
-                const currentUserMember = existingApplication.team_members?.find((m: any) => m.student_id === user.id)
-                const userHasConfirmed = currentUserMember?.invite_status === 'ACCEPTED'
-                
-                if (isLead) {
-                  return `${confirmedMembers} of ${totalMembers} members confirmed • Will auto-submit when all confirm`
-                } else if (userHasConfirmed) {
-                  return `You confirmed • ${confirmedMembers} of ${totalMembers} members confirmed`
-                } else {
-                  return `Action required: Please confirm your participation`
-                }
-              })()}
-            </span>
-            <ApplicationViewSheet
-              application={existingApplication as any}
-              currentUserId={user.id}
-              projectTitle={project.title || 'Project'}
-            />
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {existingApplication && existingApplication.status === 'SUBMITTED' && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <Clock className="h-4 w-4 text-blue-600" />
-          <AlertTitle className="text-blue-900">Application Submitted</AlertTitle>
-          <AlertDescription className="text-blue-800 flex items-center justify-between gap-4">
-            <span>
-              Submitted on {formatDate(existingApplication.submitted_at || existingApplication.created_at)}
-              {project.access_type === 'OPEN' 
-                ? ' • This project auto-approves applications'
-                : ' • The company will review your application'
-              }
-            </span>
-            <ApplicationViewSheet
-              application={existingApplication as any}
-              currentUserId={user.id}
-              projectTitle={project.title || 'Project'}
-            />
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {existingApplication && existingApplication.status === 'ACCEPTED' && (
-        <Alert className="border-green-200 bg-green-50">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-900">Application Accepted!</AlertTitle>
-          <AlertDescription className="text-green-800 flex items-center justify-between gap-4">
-            <span>
-              Congratulations! Your application has been accepted. Contact information is now visible below.
-            </span>
-            <ApplicationViewSheet
-              application={existingApplication as any}
-              currentUserId={user.id}
-              projectTitle={project.title || 'Project'}
-            />
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {existingApplication && existingApplication.status === 'REJECTED' && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-900">Application Not Selected</AlertTitle>
-          <AlertDescription className="text-red-800 flex items-center justify-between gap-4">
-            <span>
-              Your application was not selected for this project. Keep exploring other opportunities!
-            </span>
-            <ApplicationViewSheet
-              application={existingApplication as any}
-              currentUserId={user.id}
-              projectTitle={project.title || 'Project'}
-            />
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Hero */}
       <div className="space-y-3">
+        {/* Status Badge */}
+        {project.status && (
+          <StatusBadge status={project.status as any} className="uppercase tracking-wide" />
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold leading-tight flex-1">{project.title}</h1>
-          
-          {/* Bookmark Button */}
-          <BookmarkButton projectId={id} initialSaved={isSaved} />
           
           {/* Apply Button or Status Badge */}
           {existingApplication ? (
@@ -345,9 +253,6 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                   Not Selected
                 </Badge>
               )}
-              <p className="text-xs text-muted-foreground">
-                {existingApplication.status === 'PENDING' ? 'Created' : 'Applied'} {formatDate(existingApplication.submitted_at || existingApplication.created_at)}
-              </p>
             </div>
           ) : project.status === 'ACCEPTING' ? (
             <ApplyButton 
@@ -368,25 +273,138 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
               </p>
             </div>
           )}
+
+          {/* Bookmark Button */}
+          <BookmarkButton projectId={id} initialSaved={isSaved} />
           
-          {project.status && (
-            <StatusBadge status={project.status as any} className="uppercase tracking-wide" />
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {(project.project_type || []).map((t) => (
-            <Badge key={t} variant="secondary">{t}</Badge>
-          ))}
-          {project.access_type === 'OPEN' && (
-            <Badge variant="outline" className="border-green-500 text-green-700">
-              Open Access • Auto-Approve
-            </Badge>
-          )}
         </div>
         {project.short_summary && (
           <p className="text-muted-foreground text-base">{project.short_summary}</p>
         )}
+        <div className="flex flex-wrap items-center gap-2">
+          {(project.project_type || []).map((t) => (
+            <Badge key={t} variant="secondary">{t}</Badge>
+          ))}
+        </div>
       </div>
+
+      {/* Application Status Alert */}
+      {existingApplication && existingApplication.status === 'PENDING' && (
+        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 [&>svg]:relative [&>svg]:left-0 [&>svg]:top-0">
+          <div className="flex items-center gap-3">
+            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+            <div className="flex items-center justify-between gap-4 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <AlertTitle className="text-amber-900 dark:text-amber-100 mb-1">Application In Progress</AlertTitle>
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  Created on {formatDate(existingApplication.created_at)}
+                  {' • '}
+                  {(() => {
+                    const totalMembers = existingApplication.team_members?.length || 0
+                    const confirmedMembers = existingApplication.team_members?.filter((m: any) => m.invite_status === 'ACCEPTED').length || 0
+                    const isLead = existingApplicationAsLead !== null
+                    
+                    if (totalMembers === confirmedMembers) {
+                      return 'All team members confirmed'
+                    }
+                    
+                    const currentUserMember = existingApplication.team_members?.find((m: any) => m.student_id === user.id)
+                    const userHasConfirmed = currentUserMember?.invite_status === 'ACCEPTED'
+                    
+                    if (isLead) {
+                      return `${confirmedMembers} of ${totalMembers} members confirmed`
+                    } else if (userHasConfirmed) {
+                      return `${confirmedMembers} of ${totalMembers} members confirmed`
+                    } else {
+                      return `Action required: Please confirm your participation`
+                    }
+                  })()}
+                </AlertDescription>
+              </div>
+              <div className="flex-shrink-0">
+                <ApplicationViewSheet
+                  application={existingApplication as any}
+                  currentUserId={user.id}
+                  projectTitle={project.title || 'Project'}
+                />
+              </div>
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {existingApplication && existingApplication.status === 'SUBMITTED' && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50 [&>svg]:relative [&>svg]:left-0 [&>svg]:top-0">
+          <div className="flex items-center gap-3">
+            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-500 flex-shrink-0" />
+            <div className="flex items-center justify-between gap-4 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <AlertTitle className="text-blue-900 dark:text-blue-100 mb-1">Application Submitted</AlertTitle>
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  Submitted on {formatDate(existingApplication.submitted_at || existingApplication.created_at)}
+                  {project.access_type === 'OPEN' 
+                    ? ' • This project auto-approves applications'
+                    : ' • Waiting for review'
+                  }
+                </AlertDescription>
+              </div>
+              <div className="flex-shrink-0">
+                <ApplicationViewSheet
+                  application={existingApplication as any}
+                  currentUserId={user.id}
+                  projectTitle={project.title || 'Project'}
+                />
+              </div>
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {existingApplication && existingApplication.status === 'ACCEPTED' && (
+        <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50 [&>svg]:relative [&>svg]:left-0 [&>svg]:top-0">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500 flex-shrink-0" />
+            <div className="flex items-center justify-between gap-4 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <AlertTitle className="text-green-900 dark:text-green-100 mb-1">Application Accepted!</AlertTitle>
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  Congratulations! Your application has been accepted. Contact information is now visible below.
+                </AlertDescription>
+              </div>
+              <div className="flex-shrink-0">
+                <ApplicationViewSheet
+                  application={existingApplication as any}
+                  currentUserId={user.id}
+                  projectTitle={project.title || 'Project'}
+                />
+              </div>
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {existingApplication && existingApplication.status === 'REJECTED' && (
+        <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50 [&>svg]:relative [&>svg]:left-0 [&>svg]:top-0">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500 flex-shrink-0" />
+            <div className="flex items-center justify-between gap-4 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <AlertTitle className="text-red-900 dark:text-red-100 mb-1">Application Not Selected</AlertTitle>
+                <AlertDescription className="text-red-800 dark:text-red-200">
+                  Your application was not selected for this project. Keep exploring other opportunities!
+                </AlertDescription>
+              </div>
+              <div className="flex-shrink-0">
+                <ApplicationViewSheet
+                  application={existingApplication as any}
+                  currentUserId={user.id}
+                  projectTitle={project.title || 'Project'}
+                />
+              </div>
+            </div>
+          </div>
+        </Alert>
+      )}
 
 
 
