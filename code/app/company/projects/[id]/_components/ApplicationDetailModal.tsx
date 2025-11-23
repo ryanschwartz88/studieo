@@ -1,11 +1,27 @@
 'use client'
 
+import { useState, useEffect, useTransition } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { Users, Calendar, FileText, CheckCircle2, Clock, XCircle, Download, HelpCircle, FileQuestion } from 'lucide-react'
-import { ApplicationActions } from './ApplicationActions'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Users, Calendar, FileText, CheckCircle2, Clock, XCircle, Download, HelpCircle, FileQuestion, Maximize2, Minimize2, ExternalLink, Info } from 'lucide-react'
+import { getDesignDocUrl, acceptApplication, rejectApplication } from '@/lib/actions/applications'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { TeamMemberProfilePopover } from './TeamMemberProfilePopover'
 
 type TeamMember = {
   student_id: string
@@ -66,12 +82,66 @@ export function ApplicationDetailModal({
   open,
   onOpenChange,
 }: ApplicationDetailModalProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [pdfFullscreen, setPdfFullscreen] = useState(false)
+  const [designDocUrl, setDesignDocUrl] = useState<string | null>(null)
+  const [loadingDocUrl, setLoadingDocUrl] = useState(false)
+
+  // Fetch design doc URL when modal opens and design doc exists
+  useEffect(() => {
+    if (open && application.design_doc_url && !designDocUrl && !loadingDocUrl) {
+      setLoadingDocUrl(true)
+      getDesignDocUrl(application.id)
+        .then((result) => {
+          if (result.success && result.url) {
+            setDesignDocUrl(result.url)
+          } else {
+            toast.error(result.error || 'Failed to load design document')
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching design doc URL:', error)
+          toast.error('Failed to load design document')
+        })
+        .finally(() => {
+          setLoadingDocUrl(false)
+        })
+    }
+  }, [open, application.design_doc_url, application.id, designDocUrl, loadingDocUrl])
+
+  const handleAccept = () => {
+    startTransition(async () => {
+      const result = await acceptApplication(application.id)
+      if (result.success) {
+        toast.success('Application accepted! Team has been notified.')
+        router.refresh()
+        onOpenChange(false)
+      } else {
+        toast.error(result.error || 'Failed to accept application')
+      }
+    })
+  }
+
+  const handleReject = () => {
+    startTransition(async () => {
+      const result = await rejectApplication(application.id)
+      if (result.success) {
+        toast.success('Application rejected. Team has been notified.')
+        router.refresh()
+        onOpenChange(false)
+      } else {
+        toast.error(result.error || 'Failed to reject application')
+      }
+    })
+  }
+
   const getStatusConfig = (status: Application['status']) => {
     const configs = {
-      PENDING: { icon: Clock, label: 'Draft', className: 'bg-gray-100 text-gray-700' },
-      SUBMITTED: { icon: Clock, label: 'To Review', className: 'bg-blue-100 text-blue-700' },
-      ACCEPTED: { icon: CheckCircle2, label: 'Accepted', className: 'bg-green-100 text-green-700' },
-      REJECTED: { icon: XCircle, label: 'Rejected', className: 'bg-red-100 text-red-700' },
+      PENDING: { icon: Clock, label: 'Draft', className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+      SUBMITTED: { icon: Clock, label: 'To Review', className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' },
+      ACCEPTED: { icon: CheckCircle2, label: 'Accepted', className: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' },
+      REJECTED: { icon: XCircle, label: 'Rejected', className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' },
     }
     return configs[status]
   }
@@ -101,15 +171,63 @@ export function ApplicationDetailModal({
   const hasAnswers = application.answers && application.answers.length > 0
   const hasQuestions = project?.custom_questions && project.custom_questions.length > 0
 
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Application Details</DialogTitle>
           <DialogDescription>
             Review the team's application and members
           </DialogDescription>
         </DialogHeader>
+
+        {application.status === 'SUBMITTED' && (
+          <div className="flex gap-2 -mt-2 pb-4 border-b">
+            <Button
+              onClick={handleAccept}
+              disabled={isPending}
+              variant="outline"
+              size="sm"
+              className="border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/50"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              Accept
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPending}
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                >
+                  <XCircle className="h-4 w-4 mr-1.5" />
+                  Reject
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reject Application?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will notify all team members that their application was not selected.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                      onClick={handleReject}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isPending ? 'Rejecting...' : 'Reject Application'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
 
         <div className="space-y-6 mt-4">
           {/* Status & Timeline */}
@@ -130,34 +248,112 @@ export function ApplicationDetailModal({
               </p>
             </div>
           </div>
+          <Separator />
+          {/* Team Members */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              <h3 className="font-semibold text-lg">
+                Team Members ({application.team_members.length})
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {application.team_members.map((member) => {
+                const inviteConfig = getInviteStatusConfig(member.invite_status)
+                const profile = member.users.student_profiles
+
+                return (
+                  <TeamMemberProfilePopover
+                    key={member.student_id}
+                    studentId={member.student_id}
+                    studentName={member.users.name}
+                    studentEmail={member.users.email}
+                  >
+                    <div className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer group">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold">
+                            {member.users.name || 'Student'}
+                          </p>
+                          {member.is_lead ? (
+                            <>
+                            <Badge variant="default" className="text-xs">
+                              Team Lead
+                            </Badge>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </>
+                          ) : (
+                            <Info className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {member.users.email}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {getSchoolFromEmail(member.users.email)}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={inviteConfig.className}>
+                        {inviteConfig.label}
+                      </Badge>
+                    </div>
+
+                    
+                    
+                    </div>
+                  </TeamMemberProfilePopover>
+                )
+              })}
+            </div>
+          </div>
 
           <Separator />
           {/* Design Document */}
           {application.design_doc_url && (
             <>
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold text-lg">Design Document</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold text-lg">Design Document</h3>
+                  </div>
+                  {designDocUrl ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <a 
+                        href={designDocUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        View
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled={loadingDocUrl}>
+                      {loadingDocUrl ? 'Loading...' : 'View'}
+                    </Button>
+                  )}
                 </div>
-                <a
-                  href={`/api/design-docs/${application.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-background hover:bg-accent transition-colors"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="text-sm font-medium">View Design Document</span>
-                  <Download className="h-4 w-4 ml-2" />
-                </a>
+
+                {designDocUrl && (
+                  <div className="relative mt-4">
+                    <iframe
+                      src={designDocUrl}
+                      className={`w-full border rounded-lg h-[600px]`}
+                      title="PDF Preview"
+                    />
+                  </div>
+                )}
               </div>
             </>
           )}
 
-          <Separator />
           {/* Custom Questions & Answers */}
-          {hasAnswers && hasQuestions && (
+          {hasQuestions && (
             <>
+              <Separator />
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <FileQuestion className="h-5 w-5 text-muted-foreground" />
@@ -193,109 +389,8 @@ export function ApplicationDetailModal({
             </>
           )}
 
-          <Separator />
-
-          {/* Team Members */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="h-5 w-5 text-muted-foreground" />
-              <h3 className="font-semibold text-lg">
-                Team Members ({application.team_members.length})
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              {application.team_members.map((member) => {
-                const inviteConfig = getInviteStatusConfig(member.invite_status)
-                const profile = member.users.student_profiles
-
-                return (
-                  <div
-                    key={member.student_id}
-                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold">
-                            {member.users.name || 'Student'}
-                          </p>
-                          {member.is_lead && (
-                            <Badge variant="default" className="text-xs">
-                              Team Lead
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {member.users.email}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {getSchoolFromEmail(member.users.email)}
-                        </p>
-                        {profile?.grad_date && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Graduation: {new Date(profile.grad_date).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant="outline" className={inviteConfig.className}>
-                        {inviteConfig.label}
-                      </Badge>
-                    </div>
-
-                    {profile?.description && (
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                        {profile.description}
-                      </p>
-                    )}
-
-                    {profile?.interests && profile.interests.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {profile.interests.slice(0, 5).map((interest) => (
-                          <Badge key={interest} variant="secondary" className="text-xs">
-                            {interest}
-                          </Badge>
-                        ))}
-                        {profile.interests.length > 5 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{profile.interests.length - 5}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-
-                    {profile?.resume_url && (
-                      <a
-                        href={`/api/resumes/${member.student_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                      >
-                        <Download className="h-3 w-3" />
-                        View Resume
-                      </a>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-
-          {/* Actions */}
-          {application.status === 'SUBMITTED' && (
-            <>
-              <Separator />
-              <ApplicationActions
-                applicationId={application.id}
-                projectId={projectId}
-                onSuccess={() => onOpenChange(false)}
-              />
-            </>
-          )}
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-

@@ -773,14 +773,23 @@ export async function getDesignDocUrl(applicationId: string) {
   const isTeamLead = application.team_lead_id === user.id
   const isTeamMember = application.team_members?.some((tm: any) => tm.student_id === user.id)
 
-  // Check if company user has access (project owner)
-  const { data: project } = await supabase
-    .from('projects')
-    .select('company_id, company_users(user_id)')
-    .eq('id', application.project_id)
+  // Check if company user has access (project belongs to user's company)
+  let isCompanyUser = false
+  const { data: userData } = await supabase
+    .from('users')
+    .select('company_id, role')
+    .eq('id', user.id)
     .single()
 
-  const isCompanyUser = project?.company_users?.some((cu: any) => cu.user_id === user.id)
+  if (userData?.role === 'COMPANY') {
+    const { data: project } = await supabase
+      .from('projects')
+      .select('company_id')
+      .eq('id', application.project_id)
+      .single()
+
+    isCompanyUser = project?.company_id === userData.company_id
+  }
 
   if (!isTeamLead && !isTeamMember && !isCompanyUser) {
     return { success: false, error: 'Access denied' }

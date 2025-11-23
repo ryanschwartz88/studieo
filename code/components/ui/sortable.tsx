@@ -695,7 +695,11 @@ function SortableItemHandle({ asChild, className, children, cursor = true }: Sor
       data-dragging={isDragging}
       data-disabled={disabled}
       {...listeners}
-      className={cn(cursor && (isDragging ? '!cursor-grabbing' : '!cursor-grab'), className)}
+      className={cn(
+        'touch-none select-none',
+        cursor && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
+        className
+      )}
     >
       {children}
     </Comp>

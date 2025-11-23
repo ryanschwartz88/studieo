@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, CheckCircle2, Check, Loader2, Upload, X, Globe, Eye, Lock, Users, UserCheck, Building2, Infinity, Clock, Calendar as CalendarIcon, Coffee, Briefcase, Zap, Timer, Monitor, Home, Building, Lightbulb, FileText, Sparkles, Mail, Plus, ChevronDown, HelpCircle, GripVertical, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, Upload, X, Globe, Eye, Lock, Users, UserCheck, Building2, Infinity, Clock, Calendar as CalendarIcon, Coffee, Briefcase, Zap, Timer, Monitor, Home, Building, Lightbulb, FileText, Sparkles, Mail, Plus, ChevronDown, GripVertical, Trash2, FileQuestion } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +67,7 @@ const STEP_CONFIG = {
     subtitle: 'Set the project duration and provide helpful resources like reference files, documentation links, or background materials.'
   },
   questions: {
-    icon: HelpCircle,
+    icon: FileQuestion,
     title: 'Screening Questions',
     subtitle: 'Add custom questions for applicants to answer. This helps you screen candidates effectively.'
   },
@@ -1302,15 +1302,6 @@ export default function NewProjectPage() {
                   </div>
                 </div>
 
-                {startDate && endDate && (
-                  <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-3 text-sm">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <span>
-                      Duration: <span className="font-medium">{calculateDuration(startDate, endDate)} weeks</span>
-                    </span>
-                  </div>
-                )}
-
                 <Separator />
 
                 <div className="space-y-4">
@@ -1395,8 +1386,7 @@ export default function NewProjectPage() {
                     className="flex-1"
                   />
                   <Button onClick={addQuestion} disabled={!newQuestionInput.trim()}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1413,44 +1403,43 @@ export default function NewProjectPage() {
                       value={customQuestions}
                       onValueChange={handleQuestionsReorder}
                       getItemValue={(item) => item.id}
+                      className="space-y-2"
                     >
-                      <div className="space-y-2">
-                        {customQuestions.map((question) => (
-                          <SortableItem key={question.id} value={question.id} asChild>
-                            <div className="flex items-center gap-3 p-3 bg-card border rounded-lg group">
-                              <SortableItemHandle>
-                                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-                              </SortableItemHandle>
-                              
-                              <div className="flex-1">
-                                <p className="text-sm font-medium">{question.question}</p>
-                              </div>
-
-                              <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`required-${question.id}`}
-                                    checked={question.required}
-                                    onCheckedChange={() => toggleQuestionRequired(question.id)}
-                                  />
-                                  <Label htmlFor={`required-${question.id}`} className="text-xs cursor-pointer">
-                                    Required
-                                  </Label>
-                                </div>
-
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                  onClick={() => removeQuestion(question.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                      {customQuestions.map((question) => (
+                        <SortableItem key={question.id} value={question.id}>
+                          <div className="flex items-center gap-3 p-3 bg-muted/30 border rounded-lg hover:bg-muted/50 hover:border-foreground/20 transition-colors group">
+                            <SortableItemHandle>
+                              <GripVertical className="h-4 w-4 text-muted-foreground/70 hover:text-foreground transition-colors" />
+                            </SortableItemHandle>
+                            
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">{question.question}</p>
                             </div>
-                          </SortableItem>
-                        ))}
-                      </div>
+
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`required-${question.id}`}
+                                  checked={question.required}
+                                  onCheckedChange={() => toggleQuestionRequired(question.id)}
+                                />
+                                <Label htmlFor={`required-${question.id}`} className="text-xs cursor-pointer">
+                                  Required
+                                </Label>
+                              </div>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeQuestion(question.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </SortableItem>
+                      ))}
                     </Sortable>
                   )}
                 </div>
