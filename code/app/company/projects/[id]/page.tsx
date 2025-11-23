@@ -3,14 +3,14 @@ import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { BentoGrid, BentoGridItem } from '@/components/ui/bento-grid'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import { ProjectStats } from './_components/ProjectStats'
 import { ProjectEditToolbar } from './_components/ProjectEditToolbar'
 import { ResourceLinks } from './_components/ResourceLinks'
 import { ResourceFiles } from './_components/ResourceFiles'
 import { BentoModalItem } from './_components/BentoModalItem'
 import { ViewTracker } from './_components/ViewTracker'
-import { ApplicationCard } from './_components/ApplicationCard'
+import { ProjectApplicationsTable } from './_components/ProjectApplicationsTable'
 import { CalendarIcon, Users, Target, Shield, Link as LinkIcon, FileText, Brain } from 'lucide-react'
 
 interface ProjectPageProps {
@@ -46,6 +46,7 @@ type Project = {
   location: string | null
   view_count: number | null
   created_by_id: string | null
+  custom_questions?: { id: string; question: string; required: boolean }[]
 }
 
 function formatDate(d: string | null | undefined) {
@@ -106,7 +107,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         'max_teams','skills_needed','collaboration_style',
         'mentorship','start_date','end_date','resource_links','resource_files',
         'contact_name','contact_role','contact_email','confidentiality','status','company_id',
-        'internal_notes','location','view_count','created_by_id',
+        'internal_notes','location','view_count','created_by_id','custom_questions',
       ].join(',')
     )
     .eq('id', id)
@@ -170,6 +171,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         created_at,
         submitted_at,
         design_doc_url,
+        answers,
         team_lead_id,
         users(
           name,
@@ -204,10 +206,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   // Check if current user is the creator (only for own projects)
   const isCreator = isOwnProject && project.created_by_id === user.id
 
-  // Filter applications by status
-  const submittedApplications = allApplications?.filter(app => app.status === 'SUBMITTED') || []
-  const acceptedApplications = allApplications?.filter(app => app.status === 'ACCEPTED') || []
-  const rejectedApplications = allApplications?.filter(app => app.status === 'REJECTED') || []
+
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
@@ -216,6 +215,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       
       {/* Hero */}
       <div className="space-y-3">
+        {project.status && (
+          <StatusBadge status={project.status as any} className="uppercase tracking-wide" />
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold leading-tight flex-1">{project.title}</h1>
           {/* Only show edit button if user created this project */}
@@ -230,9 +232,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 resource_links: project.resource_links,
               }}
             />
-          )}
-          {project.status && (
-            <StatusBadge status={project.status as any} className="uppercase tracking-wide" />
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -254,85 +253,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         />
       )}
 
-      {/* Applications Tabs - Only show for own projects */}
+      {/* Applications Table - Only show for own projects */}
       {isOwnProject && (
-      <Tabs defaultValue="review" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="review" className="relative">
-            To Review
-            {toReview && toReview > 0 && (
-              <Badge variant="destructive" className="ml-2 px-1.5 py-0.5 text-xs">
-                {toReview}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="all">
-            All ({totalApplicants ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="accepted">
-            Accepted ({accepted ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="rejected">
-            Rejected ({rejected ?? 0})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="review" className="mt-6">
-          {submittedApplications.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {submittedApplications.map((app) => (
-                <ApplicationCard key={app.id} application={app as any} projectId={id} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">No applications to review</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="all" className="mt-6">
-          {(allApplications && allApplications.length > 0) ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {allApplications.map((app) => (
-                <ApplicationCard key={app.id} application={app as any} projectId={id} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">No applications yet</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="accepted" className="mt-6">
-          {acceptedApplications.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {acceptedApplications.map((app) => (
-                <ApplicationCard key={app.id} application={app as any} projectId={id} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">No accepted applications</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="rejected" className="mt-6">
-          {rejectedApplications.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {rejectedApplications.map((app) => (
-                <ApplicationCard key={app.id} application={app as any} projectId={id} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">No rejected applications</p>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        <ProjectApplicationsTable 
+          applications={allApplications as any[]} 
+          projectId={id}
+          project={project}
+        />
       )}
 
       {/* Bento Grid */}
@@ -408,19 +335,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               </div>
             </div>
 
-            {/* Skills */}
-            {/* <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md col-span-1 sm:col-span-2 lg:col-span-3">
-              <div className="text-xs text-muted-foreground mb-2">Skills</div>
-              <div className="flex flex-wrap gap-2">
-                {(project.skills_needed || []).length > 0 ? (
-                  (project.skills_needed || []).map((skill) => (
-                    <Badge key={skill} variant="secondary">{skill}</Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">No skills specified</span>
-                )}
-              </div>
-            </div> */}
           </div>
         </BentoModalItem>
 

@@ -3,7 +3,8 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Users, Calendar, FileText, CheckCircle2, Clock, XCircle, Download } from 'lucide-react'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Users, Calendar, FileText, CheckCircle2, Clock, XCircle, Download, HelpCircle, FileQuestion } from 'lucide-react'
 import { ApplicationActions } from './ApplicationActions'
 
 type TeamMember = {
@@ -23,12 +24,23 @@ type TeamMember = {
   }
 }
 
+type CustomQuestion = {
+  id: string
+  question: string
+  required: boolean
+}
+
+type Project = {
+  custom_questions?: CustomQuestion[]
+}
+
 type Application = {
   id: string
   status: 'PENDING' | 'SUBMITTED' | 'ACCEPTED' | 'REJECTED'
   created_at: string
   submitted_at: string | null
   design_doc_url: string | null
+  answers?: { question_id: string; answer: string }[]
   team_members: TeamMember[]
   users: {
     name: string | null
@@ -42,6 +54,7 @@ type Application = {
 interface ApplicationDetailModalProps {
   application: Application
   projectId: string
+  project?: Project
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -49,6 +62,7 @@ interface ApplicationDetailModalProps {
 export function ApplicationDetailModal({
   application,
   projectId,
+  project,
   open,
   onOpenChange,
 }: ApplicationDetailModalProps) {
@@ -84,6 +98,9 @@ export function ApplicationDetailModal({
     return schoolMap[domain] || domain.split('.')[0]
   }
 
+  const hasAnswers = application.answers && application.answers.length > 0
+  const hasQuestions = project?.custom_questions && project.custom_questions.length > 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -113,6 +130,68 @@ export function ApplicationDetailModal({
               </p>
             </div>
           </div>
+
+          <Separator />
+          {/* Design Document */}
+          {application.design_doc_url && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-semibold text-lg">Design Document</h3>
+                </div>
+                <a
+                  href={`/api/design-docs/${application.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-background hover:bg-accent transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="text-sm font-medium">View Design Document</span>
+                  <Download className="h-4 w-4 ml-2" />
+                </a>
+              </div>
+            </>
+          )}
+
+          <Separator />
+          {/* Custom Questions & Answers */}
+          {hasAnswers && hasQuestions && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <FileQuestion className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-semibold text-lg">Screening Questions</h3>
+                </div>
+                
+                <Accordion type="single" collapsible className="w-full">
+                  {project.custom_questions?.map((question) => {
+                    const answer = application.answers?.find(a => a.question_id === question.id)
+                    
+                    return (
+                      <AccordionItem key={question.id} value={question.id}>
+                        <AccordionTrigger className="text-left">
+                          <div className="flex items-start gap-2">
+                            <span className="flex-1">{question.question}</span>
+                            {question.required && (
+                              <Badge variant="secondary" className="text-xs">Required</Badge>
+                            )}
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="p-4 rounded-lg bg-muted/50 border">
+                            <p className="text-sm whitespace-pre-wrap">
+                              {answer?.answer || <span className="text-muted-foreground italic">No answer provided</span>}
+                            </p>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
+              </div>
+            </>
+          )}
 
           <Separator />
 
@@ -202,50 +281,6 @@ export function ApplicationDetailModal({
             </div>
           </div>
 
-          <Separator />
-
-          {/* Design Document */}
-          {application.design_doc_url && (
-            <>
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold text-lg">Design Document</h3>
-                </div>
-                <a
-                  href={`/api/design-docs/${application.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-background hover:bg-accent transition-colors"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="text-sm font-medium">View Design Document</span>
-                  <Download className="h-4 w-4 ml-2" />
-                </a>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {/* Timeline */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <h3 className="font-semibold text-lg">Timeline</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span>{new Date(application.created_at).toLocaleString()}</span>
-              </div>
-              {application.submitted_at && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Submitted</span>
-                  <span>{new Date(application.submitted_at).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Actions */}
           {application.status === 'SUBMITTED' && (

@@ -16,44 +16,44 @@ export async function createProject(
   openDate?: Date
 ) {
   const supabase = await createClient();
-  
+
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // Verify user has COMPANY role
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('role, company_id, name, email')
     .eq('id', user.id)
     .single();
-  
+
   if (userError || !userData) {
     console.error('Error fetching user:', userError);
     return { success: false, error: 'Could not verify user' };
   }
-  
+
   if (userData.role !== 'COMPANY') {
     return { success: false, error: 'Only company users can create projects' };
   }
-  
+
   if (!userData.company_id) {
     return { success: false, error: 'User not associated with a company' };
   }
-  
+
   // Validate form data
   const result = createProjectSchema.safeParse(formData);
-  
+
   if (!result.success) {
     console.error('Validation error:', result.error);
-    return { 
-      success: false, 
-      error: (result as any).error?.issues?.[0]?.message || (result as any).error?.message || 'Invalid form data' 
+    return {
+      success: false,
+      error: (result as any).error?.issues?.[0]?.message || (result as any).error?.message || 'Invalid form data'
     };
   }
-  
+
   const validatedData = result.data;
 
   // Conditional validation: open_date must be before start_date only for INCOMPLETE or SCHEDULED status
@@ -62,13 +62,13 @@ export async function createProject(
     maxOpenDate.setDate(maxOpenDate.getDate() - 1);
     maxOpenDate.setHours(23, 59, 59, 999); // End of day
     if (validatedData.open_date > maxOpenDate) {
-      return { 
-        success: false, 
-        error: 'Open date must be at most one day before project start date' 
+      return {
+        success: false,
+        error: 'Open date must be at most one day before project start date'
       };
     }
   }
-  
+
   // Prepare project data for database
   const projectData = {
     company_id: userData.company_id,
@@ -99,29 +99,30 @@ export async function createProject(
     mentorship: validatedData.mentorship,
     confidentiality: validatedData.confidentiality,
     location: validatedData.location || null,
+    custom_questions: validatedData.custom_questions || [],
   };
-  
+
   // Insert project
   const { data: project, error: insertError } = await supabase
     .from('projects')
     .insert([projectData])
     .select()
     .single();
-  
+
   if (insertError) {
     console.error('Project creation error:', insertError);
-    return { 
-      success: false, 
-      error: 'Failed to create project. Please try again.' 
+    return {
+      success: false,
+      error: 'Failed to create project. Please try again.'
     };
   }
-  
+
   // Revalidate relevant paths
-  revalidatePath('/projects');
-  revalidatePath('/dashboard');
-  
+  revalidatePath('/company/projects');
+  revalidatePath('/company/dashboard');
+
   // Always redirect to the newly created project's page
-  redirect(`/projects/${project.id}`);
+  redirect(`/company/projects/${project.id}`);
 }
 
 /**
@@ -130,13 +131,13 @@ export async function createProject(
  */
 export async function uploadResourceFiles(files: File[], projectId?: string) {
   const supabase = await createClient();
-  
+
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // If projectId provided, verify user owns the project
   if (projectId) {
     const { data: project, error: projectError } = await supabase
@@ -145,30 +146,30 @@ export async function uploadResourceFiles(files: File[], projectId?: string) {
       .eq('id', projectId)
       .eq('created_by_id', user.id)
       .single();
-    
+
     if (projectError || !project) {
       return { success: false, error: 'Project not found or access denied' };
     }
   }
-  
+
   // Validate files
   const maxSize = 10 * 1024 * 1024; // 10MB per file
   const uploadedUrls: string[] = [];
-  
+
   for (const file of files) {
     if (file.size > maxSize) {
-      return { 
-        success: false, 
-        error: `File ${file.name} exceeds 10MB limit` 
+      return {
+        success: false,
+        error: `File ${file.name} exceeds 10MB limit`
       };
     }
-    
+
     // Generate unique filename
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const tempFolder = projectId || 'temp';
     const filePath = `${tempFolder}/${timestamp}_${sanitizedName}`;
-    
+
     // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('project_resources')
@@ -176,18 +177,18 @@ export async function uploadResourceFiles(files: File[], projectId?: string) {
         contentType: file.type,
         upsert: false,
       });
-    
+
     if (uploadError) {
       console.error('File upload error:', uploadError);
-      return { 
-        success: false, 
-        error: `Failed to upload ${file.name}` 
+      return {
+        success: false,
+        error: `Failed to upload ${file.name}`
       };
     }
-    
+
     uploadedUrls.push(`project_resources/${filePath}`);
   }
-  
+
   // If project ID provided, update project with file URLs
   if (projectId) {
     const { error: updateError } = await supabase
@@ -197,20 +198,20 @@ export async function uploadResourceFiles(files: File[], projectId?: string) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', projectId);
-    
+
     if (updateError) {
       console.error('Project update error:', updateError);
-      return { 
-        success: false, 
-        error: 'Files uploaded but failed to update project' 
+      return {
+        success: false,
+        error: 'Files uploaded but failed to update project'
       };
     }
   }
-  
-  return { 
-    success: true, 
+
+  return {
+    success: true,
     urls: uploadedUrls,
-    message: 'Files uploaded successfully' 
+    message: 'Files uploaded successfully'
   };
 }
 
@@ -223,12 +224,12 @@ export async function updateProjectStatus(
   openDate?: Date
 ) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // Verify ownership
   const { data: project, error: projectError } = await supabase
     .from('projects')
@@ -236,34 +237,34 @@ export async function updateProjectStatus(
     .eq('id', projectId)
     .eq('created_by_id', user.id)
     .single();
-  
+
   if (projectError || !project) {
     return { success: false, error: 'Project not found or access denied' };
   }
-  
+
   // Update project
   const updateData: any = {
     status,
     updated_at: new Date().toISOString(),
   };
-  
+
   if (status === 'SCHEDULED') {
     updateData.open_date = openDate ? openDate.toISOString() : null;
   }
-  
+
   const { error: updateError } = await supabase
     .from('projects')
     .update(updateData)
     .eq('id', projectId);
-  
+
   if (updateError) {
     console.error('Status update error:', updateError);
     return { success: false, error: 'Failed to update project status' };
   }
-  
-  revalidatePath('/dashboard');
-  revalidatePath(`/projects/${projectId}`);
-  
+
+  revalidatePath('/company/dashboard');
+  revalidatePath(`/company/projects/${projectId}`);
+
   return { success: true, message: `Project ${status.toLowerCase()}` };
 }
 
@@ -272,12 +273,12 @@ export async function updateProjectStatus(
  */
 export async function getProject(projectId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   const { data: project, error } = await supabase
     .from('projects')
     .select(`
@@ -291,12 +292,12 @@ export async function getProject(projectId: string) {
     `)
     .eq('id', projectId)
     .single();
-  
+
   if (error) {
     console.error('Error fetching project:', error);
     return { success: false, error: 'Project not found' };
   }
-  
+
   return { success: true, project };
 }
 
@@ -305,34 +306,34 @@ export async function getProject(projectId: string) {
  */
 export async function getCompanyProjects() {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // Get user's company_id
   const { data: userData } = await supabase
     .from('users')
     .select('company_id')
     .eq('id', user.id)
     .single();
-  
+
   if (!userData?.company_id) {
     return { success: false, error: 'User not associated with a company' };
   }
-  
+
   const { data: projects, error } = await supabase
     .from('projects')
     .select('*')
     .eq('company_id', userData.company_id)
     .order('created_at', { ascending: false });
-  
+
   if (error) {
     console.error('Error fetching projects:', error);
     return { success: false, error: 'Failed to fetch projects' };
   }
-  
+
   return { success: true, projects };
 }
 
@@ -341,55 +342,55 @@ export async function getCompanyProjects() {
  */
 export async function archiveProject(projectId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // Verify user has COMPANY role and project belongs to their company
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('role, company_id')
     .eq('id', user.id)
     .single();
-  
+
   if (userError || !userData || userData.role !== 'COMPANY' || !userData.company_id) {
     return { success: false, error: 'Access denied' };
   }
-  
+
   // Verify project belongs to user's company
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .select('id, company_id, status')
     .eq('id', projectId)
     .single();
-  
+
   if (projectError || !project) {
     return { success: false, error: 'Project not found' };
   }
-  
+
   if (project.company_id !== userData.company_id) {
     return { success: false, error: 'Access denied' };
   }
-  
+
   // Update status to ARCHIVED
   const { error: updateError } = await supabase
     .from('projects')
-    .update({ 
+    .update({
       status: 'ARCHIVED',
       updated_at: new Date().toISOString()
     })
     .eq('id', projectId);
-  
+
   if (updateError) {
     console.error('Archive error:', updateError);
     return { success: false, error: 'Failed to archive project' };
   }
-  
-  revalidatePath('/dashboard');
-  revalidatePath(`/projects/${projectId}`);
-  
+
+  revalidatePath('/company/dashboard');
+  revalidatePath(`/company/projects/${projectId}`);
+
   return { success: true, message: 'Project archived successfully' };
 }
 
@@ -398,12 +399,12 @@ export async function archiveProject(projectId: string) {
  */
 export async function deleteProject(projectId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // Verify ownership
   const { data: project, error: projectError } = await supabase
     .from('projects')
@@ -411,25 +412,70 @@ export async function deleteProject(projectId: string) {
     .eq('id', projectId)
     .eq('created_by_id', user.id)
     .single();
-  
+
   if (projectError || !project) {
     return { success: false, error: 'Project not found or access denied' };
   }
-  
+
   // Soft delete (or hard delete if preferred)
   const { error: deleteError } = await supabase
     .from('projects')
     .delete()
     .eq('id', projectId);
-  
+
   if (deleteError) {
     console.error('Delete error:', deleteError);
     return { success: false, error: 'Failed to delete project' };
   }
-  
-  revalidatePath('/dashboard');
-  
+
+  revalidatePath('/company/dashboard');
+
   return { success: true, message: 'Project deleted successfully' };
+}
+
+/**
+ * Mark project as completed
+ * Sets status to COMPLETED and end_date to now
+ */
+export async function completeProject(projectId: string) {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+
+  // Verify ownership
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('id, created_by_id')
+    .eq('id', projectId)
+    .eq('created_by_id', user.id)
+    .single();
+
+  if (projectError || !project) {
+    return { success: false, error: 'Project not found or access denied' };
+  }
+
+  // Update status and end_date
+  const { error: updateError } = await supabase
+    .from('projects')
+    .update({
+      status: 'COMPLETED',
+      end_date: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', projectId);
+
+  if (updateError) {
+    console.error('Complete project error:', updateError);
+    return { success: false, error: 'Failed to mark project as completed' };
+  }
+
+  revalidatePath('/company/dashboard');
+  revalidatePath(`/company/projects/${projectId}`);
+
+  return { success: true, message: 'Project marked as completed' };
 }
 
 /**
@@ -466,7 +512,7 @@ export async function updateProjectFull(
   if (projErr || !proj || proj.company_id !== userData.company_id) {
     return { success: false, error: 'Project not found or access denied' };
   }
-  
+
   // Only the creator can edit the project
   if (proj.created_by_id !== user.id) {
     return { success: false, error: 'Only the project creator can edit this project' };
@@ -492,9 +538,9 @@ export async function updateProjectFull(
     maxOpenDate.setDate(maxOpenDate.getDate() - 1);
     maxOpenDate.setHours(23, 59, 59, 999); // End of day
     if (data.open_date > maxOpenDate) {
-      return { 
-        success: false, 
-        error: 'Open date must be at most one day before project start date' 
+      return {
+        success: false,
+        error: 'Open date must be at most one day before project start date'
       };
     }
   }
@@ -519,7 +565,7 @@ export async function updateProjectFull(
           return { success: false, error: 'Project in progress: start date cannot be moved into the future.' };
         }
       }
-    } catch {}
+    } catch { }
 
     // Derive status from dates
     const today = new Date();
@@ -571,6 +617,7 @@ export async function updateProjectFull(
     confidentiality: data.confidentiality,
     internal_notes: data.internal_notes || null,
     location: data.location || null,
+    custom_questions: data.custom_questions || [],
     updated_at: new Date().toISOString(),
     status: nextStatus,
   };
@@ -587,7 +634,7 @@ export async function updateProjectFull(
     return { success: false, error: 'Failed to update project' };
   }
 
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/company/projects/${projectId}`);
   return { success: true };
 }
 
@@ -627,7 +674,7 @@ export async function updateProjectFields(
   if (proj.company_id && userData.company_id && proj.company_id !== userData.company_id) {
     return { success: false, error: 'Access denied' };
   }
-  
+
   // Only the creator can edit the project
   if (proj.created_by_id !== user.id) {
     return { success: false, error: 'Only the project creator can edit this project' };
@@ -658,7 +705,7 @@ export async function updateProjectFields(
     return { success: false, error: 'Failed to update project' };
   }
 
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/company/projects/${projectId}`);
   return { success: true };
 }
 
@@ -718,43 +765,43 @@ export async function getProjectResourceSignedUrl(
  */
 export async function recordProjectView(projectId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     // Optionally allow anonymous views, but for Studieo we require auth
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   // Check user role - only track student views
   const { data: userData } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single();
-  
+
   // Only track views from students (not companies)
   if (!userData || userData.role !== 'STUDENT') {
-    return { 
-      success: true, 
+    return {
+      success: true,
       isNewView: false,
       viewCount: 0,
       message: 'View not tracked (company user)'
     };
   }
-  
+
   // Call the database function to record the view
   const { data, error } = await supabase.rpc('record_project_view', {
     p_project_id: projectId,
     p_user_id: user.id,
   });
-  
+
   if (error) {
     console.error('Error recording project view:', error);
     return { success: false, error: 'Failed to record view' };
   }
-  
-  return { 
-    success: true, 
+
+  return {
+    success: true,
     isNewView: data?.is_new_view || false,
     viewCount: data?.view_count || 0,
   };
@@ -765,22 +812,22 @@ export async function recordProjectView(projectId: string) {
  */
 export async function getRecentlyViewedProjects(limit: number = 10) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Not authenticated' };
   }
-  
+
   const { data, error } = await supabase.rpc('get_recently_viewed_projects', {
     p_user_id: user.id,
     p_limit: limit,
   });
-  
+
   if (error) {
     console.error('Error fetching recently viewed projects:', error);
     return { success: false, error: 'Failed to fetch recently viewed projects' };
   }
-  
+
   return { success: true, projects: data || [] };
 }
 

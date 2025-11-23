@@ -22,7 +22,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { FileText, Users, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { FileText, Users, CheckCircle2, Clock, XCircle, FileQuestion } from 'lucide-react'
 import { toast } from 'sonner'
 import { confirmTeamMembership, declineTeamMembership } from '@/lib/actions/team-members'
 import { withdrawApplication, getDesignDocUrl } from '@/lib/actions/applications'
@@ -46,12 +47,14 @@ type Application = {
   submitted_at: string | null
   design_doc_url: string | null
   team_members: TeamMember[]
+  answers: { question_id: string; answer: string }[] | null
 }
 
 interface ApplicationViewSheetProps {
   application: Application
   currentUserId: string
   projectTitle: string
+  customQuestions?: { id: string; question: string; required: boolean }[] | null
   trigger?: React.ReactNode
 }
 
@@ -59,6 +62,7 @@ export function ApplicationViewSheet({
   application,
   currentUserId,
   projectTitle,
+  customQuestions,
   trigger,
 }: ApplicationViewSheetProps) {
   const router = useRouter()
@@ -333,6 +337,44 @@ export function ApplicationViewSheet({
               ))}
             </div>
           </div>
+
+          {/* Custom Questions */}
+          {customQuestions && customQuestions.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <FileQuestion className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-semibold">Screening Questions</p>
+              </div>
+              
+              <div className="p-1">
+                <Accordion type="single" collapsible className="w-full">
+                  {customQuestions.map((question) => {
+                    const answer = application.answers?.find(a => a.question_id === question.id)
+                    
+                    return (
+                      <AccordionItem key={question.id} value={question.id}>
+                        <AccordionTrigger className="text-left">
+                          <div className="flex items-start gap-2">
+                            <span className="flex-1">{question.question}</span>
+                            {question.required && (
+                              <Badge variant="secondary" className="text-xs">Required</Badge>
+                            )}
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-1">
+                          <div className="p-4 rounded-lg bg-muted/50 border">
+                            <p className="text-sm whitespace-pre-wrap">
+                              {answer?.answer || <span className="text-muted-foreground italic">No answer provided</span>}
+                            </p>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
+              </div>
+            </div>
+          )}
 
           {/* Design Document */}
           {application.design_doc_url && (

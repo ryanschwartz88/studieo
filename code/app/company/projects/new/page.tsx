@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, CheckCircle2, Check, Loader2, Upload, X, Globe, Eye, Lock, Users, UserCheck, Building2, Infinity, Clock, Calendar as CalendarIcon, Coffee, Briefcase, Zap, Timer, Monitor, Home, Building, Lightbulb, FileText, Sparkles, Mail, Plus, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Check, Loader2, Upload, X, Globe, Eye, Lock, Users, UserCheck, Building2, Infinity, Clock, Calendar as CalendarIcon, Coffee, Briefcase, Zap, Timer, Monitor, Home, Building, Lightbulb, FileText, Sparkles, Mail, Plus, ChevronDown, HelpCircle, GripVertical, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { Sortable, SortableItem, SortableItemHandle } from '@/components/ui/sortable';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import { createProject, uploadResourceFiles } from '@/lib/actions/projects';
 import { createClient } from '@/lib/supabase/client';
@@ -33,9 +35,10 @@ import {
   getHoursLabel,
   calculateDuration,
   type CreateProjectInput,
+  type CustomQuestion,
 } from '@/lib/schemas/projects';
 
-type Step = 'overview' | 'details' | 'team' | 'skills' | 'timeline' | 'contact';
+type Step = 'overview' | 'details' | 'team' | 'skills' | 'timeline' | 'questions' | 'contact';
 
 const STEP_CONFIG = {
   overview: {
@@ -62,6 +65,11 @@ const STEP_CONFIG = {
     icon: CalendarIcon,
     title: 'Timeline & Resources',
     subtitle: 'Set the project duration and provide helpful resources like reference files, documentation links, or background materials.'
+  },
+  questions: {
+    icon: HelpCircle,
+    title: 'Screening Questions',
+    subtitle: 'Add custom questions for applicants to answer. This helps you screen candidates effectively.'
   },
   contact: {
     icon: Mail,
@@ -140,6 +148,10 @@ export default function NewProjectPage() {
   const [resourceLinks, setResourceLinks] = useState('');
   const [location, setLocation] = useState('');
 
+  // Step 6: Screening Questions
+  const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
+  const [newQuestionInput, setNewQuestionInput] = useState('');
+
   // Scheduling
   const [openDate, setOpenDate] = useState<Date | undefined>(undefined);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -194,7 +206,8 @@ export default function NewProjectPage() {
     team: 3,
     skills: 4,
     timeline: 5,
-    contact: 6,
+    questions: 6,
+    contact: 7,
   };
 
   const totalSteps = Object.keys(steps).length;
@@ -365,6 +378,41 @@ export default function NewProjectPage() {
     setResourceFiles(resourceFiles.filter((_, i) => i !== index));
   };
 
+  // Custom Questions Handlers
+  const addQuestion = () => {
+    const trimmed = newQuestionInput.trim();
+    if (!trimmed) return;
+    
+    if (trimmed.length < 5) {
+      setError('Question must be at least 5 characters');
+      return;
+    }
+
+    const newQuestion: CustomQuestion = {
+      id: crypto.randomUUID(),
+      question: trimmed,
+      required: false,
+    };
+
+    setCustomQuestions([...customQuestions, newQuestion]);
+    setNewQuestionInput('');
+    setError(null);
+  };
+
+  const removeQuestion = (id: string) => {
+    setCustomQuestions(customQuestions.filter(q => q.id !== id));
+  };
+
+  const toggleQuestionRequired = (id: string) => {
+    setCustomQuestions(customQuestions.map(q => 
+      q.id === id ? { ...q, required: !q.required } : q
+    ));
+  };
+
+  const handleQuestionsReorder = (newQuestions: CustomQuestion[]) => {
+    setCustomQuestions(newQuestions);
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 'overview':
@@ -377,6 +425,8 @@ export default function NewProjectPage() {
         return skillsNeeded.length >= 1 && collaborationStyle !== '';
       case 'timeline':
         return startDate && endDate && endDate >= startDate;
+      case 'questions':
+        return true; // Optional step
       case 'contact':
         return contactName.length >= 2 && contactRole.length >= 2 && contactEmail.includes('@');
       default:
@@ -385,7 +435,7 @@ export default function NewProjectPage() {
   };
 
   const handleNext = () => {
-    const stepOrder: Step[] = ['overview', 'details', 'team', 'skills', 'timeline', 'contact'];
+    const stepOrder: Step[] = ['overview', 'details', 'team', 'skills', 'timeline', 'questions', 'contact'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex < stepOrder.length - 1) {
       setCurrentStep(stepOrder[currentIndex + 1]);
@@ -393,7 +443,7 @@ export default function NewProjectPage() {
   };
 
   const handleBack = () => {
-    const stepOrder: Step[] = ['overview', 'details', 'team', 'skills', 'timeline', 'contact'];
+    const stepOrder: Step[] = ['overview', 'details', 'team', 'skills', 'timeline', 'questions', 'contact'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -448,6 +498,7 @@ export default function NewProjectPage() {
         contact_role: contactRole,
         contact_email: contactEmail,
         confidentiality: confidentiality as any,
+        custom_questions: customQuestions,
       };
 
       // Create project
@@ -1207,14 +1258,7 @@ export default function NewProjectPage() {
                             today.setHours(0, 0, 0, 0);
                             const d = new Date(date);
                             d.setHours(0, 0, 0, 0);
-                            // must be future (today or later) and not after endDate if set
-                            if (d < today) return true;
-                            if (endDate) {
-                              const e = new Date(endDate);
-                              e.setHours(0, 0, 0, 0);
-                              if (d > e) return true;
-                            }
-                            return false;
+                            return d < today;
                           }}
                         />
                       </PopoverContent>
@@ -1242,22 +1286,15 @@ export default function NewProjectPage() {
                           captionLayout="dropdown"
                           selected={endDate}
                           onSelect={setEndDate}
-                          defaultMonth={endDate ?? (startDate ?? new Date())}
+                          defaultMonth={endDate ?? new Date()}
                           startMonth={new Date(currentYear, 0, 1)}
                           endMonth={new Date(currentYear + 4, 11, 1)}
                           disabled={(date) => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
                             const d = new Date(date);
                             d.setHours(0, 0, 0, 0);
-                            // must be future and not before startDate if set
-                            if (d < today) return true;
-                            if (startDate) {
-                              const s = new Date(startDate);
-                              s.setHours(0, 0, 0, 0);
-                              if (d < s) return true;
-                            }
-                            return false;
+                            const minDate = startDate ? new Date(startDate) : new Date();
+                            minDate.setHours(0, 0, 0, 0);
+                            return d < minDate;
                           }}
                         />
                       </PopoverContent>
@@ -1265,71 +1302,162 @@ export default function NewProjectPage() {
                   </div>
                 </div>
 
-                {/* Duration hidden per request */}
+                {startDate && endDate && (
+                  <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-3 text-sm">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span>
+                      Duration: <span className="font-medium">{calculateDuration(startDate, endDate)} weeks</span>
+                    </span>
+                  </div>
+                )}
 
-                <div>
-                  <Label htmlFor="resource-files">Resource Files (Optional)</Label>
-                  <p className="text-sm text-muted-foreground mt-1 mb-3">
-                    Upload files that will help students understand the project
-                  </p>
-                  <div className="space-y-3">
-                    <label
-                      htmlFor="resource-files"
-                      className="flex items-center justify-center gap-2 p-6 rounded-lg border-2 border-dashed cursor-pointer hover:border-foreground transition-colors"
-                    >
-                      <Upload className="h-5 w-5" />
-                      <span className="text-sm font-medium">Click to upload files</span>
-                      <input
-                        id="resource-files"
+                <Separator />
+
+                <div className="space-y-4">
+                  <div>
+                    <Label>Resource Links</Label>
+                    <Textarea
+                      value={resourceLinks}
+                      onChange={(e) => setResourceLinks(e.target.value)}
+                      placeholder="Add links to documentation, design files, or other resources (one per line)"
+                      className="mt-2 font-mono text-sm"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Resource Files</Label>
+                    <div className="mt-2 border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                      <Input
                         type="file"
                         multiple
                         onChange={handleFileChange}
-                        className="hidden"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                    </label>
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm font-medium">Drop files here or click to upload</p>
+                        <p className="text-xs text-muted-foreground">PDF, DOCX, PNG, JPG (Max 10MB each)</p>
+                      </div>
+                    </div>
 
                     {resourceFiles.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="mt-4 space-y-2">
                         {resourceFiles.map((file, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 rounded-lg bg-accent"
-                          >
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <span className="text-sm">{file.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({(file.size / 1024).toFixed(1)} KB)
+                          <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{file.name}</span>
+                              <span className="text-muted-foreground text-xs">
+                                ({(file.size / 1024 / 1024).toFixed(2)} MB)
                               </span>
                             </div>
-                            <button
-                              type="button"
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
                               onClick={() => removeFile(index)}
-                              className="text-muted-foreground hover:text-foreground"
                             >
-                              <X className="h-4 w-4" />
-                            </button>
+                              <X className="h-3 w-3" />
+                            </Button>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="resource-links">Resource Links (Optional)</Label>
-                  <Textarea
-                    id="resource-links"
-                    value={resourceLinks}
-                    onChange={(e) => setResourceLinks(e.target.value)}
-                    placeholder="Add links to relevant resources (one per line)..."
-                    rows={4}
-                    className="mt-2"
-                  />
-                </div>
               </div>
             </motion.div>
           )}
+
+          {/* Step 6: Screening Questions */}
+          {currentStep === 'questions' && (
+            <motion.div
+              key="questions"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newQuestionInput}
+                    onChange={(e) => setNewQuestionInput(e.target.value)}
+                    placeholder="e.g., Why are you interested in this project?"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addQuestion();
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button onClick={addQuestion} disabled={!newQuestionInput.trim()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Question
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ask questions to help you evaluate applicants. You can mark them as required.
+                </p>
+
+                <div className="space-y-2">
+                  {customQuestions.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
+                      No questions added yet.
+                    </div>
+                  ) : (
+                    <Sortable
+                      value={customQuestions}
+                      onValueChange={handleQuestionsReorder}
+                      getItemValue={(item) => item.id}
+                    >
+                      <div className="space-y-2">
+                        {customQuestions.map((question) => (
+                          <SortableItem key={question.id} value={question.id} asChild>
+                            <div className="flex items-center gap-3 p-3 bg-card border rounded-lg group">
+                              <SortableItemHandle>
+                                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                              </SortableItemHandle>
+                              
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{question.question}</p>
+                              </div>
+
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`required-${question.id}`}
+                                    checked={question.required}
+                                    onCheckedChange={() => toggleQuestionRequired(question.id)}
+                                  />
+                                  <Label htmlFor={`required-${question.id}`} className="text-xs cursor-pointer">
+                                    Required
+                                  </Label>
+                                </div>
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => removeQuestion(question.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </SortableItem>
+                        ))}
+                      </div>
+                    </Sortable>
+                  )}
+                </div>
+              </div>
+
+          </motion.div>
+        )}
 
           {/* Step 6: Contact & Confidentiality */}
           {currentStep === 'contact' && (

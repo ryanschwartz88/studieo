@@ -47,13 +47,13 @@ export function BrowseClient({ initialProjects, savedProjectIds, studentLimits, 
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
-  const [accessFilter, setAccessFilter] = useState<string>((searchParams.get('access') || 'OPEN').toUpperCase())
+  const [accessFilter, setAccessFilter] = useState<string>((searchParams.get('access') || 'ALL').toUpperCase())
   const [teamSizeRange, setTeamSizeRange] = useState<[number, number]>([
     Number(searchParams.get('teamMin')) || 1,
     Number(searchParams.get('teamMax')) || 11,
   ])
   const [maxTeams, setMaxTeams] = useState(searchParams.get('maxTeams') || '10')
-  const [unlimitedTeams, setUnlimitedTeams] = useState(searchParams.get('unlimited') === 'true')
+  const [unlimitedTeams, setUnlimitedTeams] = useState(searchParams.get('unlimited') !== 'false')
   const [collaboration, setCollaboration] = useState<string[]>(
     searchParams.get('collab')?.split(',').filter(Boolean) || []
   )
@@ -77,11 +77,11 @@ export function BrowseClient({ initialProjects, savedProjectIds, studentLimits, 
   const updateURL = () => {
     const params = new URLSearchParams()
     if (searchQuery) params.set('q', searchQuery)
-    if (accessFilter !== 'OPEN') params.set('access', accessFilter)
+    if (accessFilter !== 'ALL') params.set('access', accessFilter)
     if (teamSizeRange[0] !== 1) params.set('teamMin', String(teamSizeRange[0]))
     if (teamSizeRange[1] !== 11) params.set('teamMax', String(teamSizeRange[1]))
     if (maxTeams && !unlimitedTeams) params.set('maxTeams', maxTeams)
-    if (unlimitedTeams) params.set('unlimited', 'true')
+    if (!unlimitedTeams) params.set('unlimited', 'false')
     if (collaboration.length > 0) params.set('collab', collaboration.join(','))
     if (location) params.set('location', location)
     if (weeklyHours.length > 0) params.set('hours', weeklyHours.join(','))
@@ -93,10 +93,10 @@ export function BrowseClient({ initialProjects, savedProjectIds, studentLimits, 
 
   const clearFilters = () => {
     setSearchQuery('')
-    setAccessFilter('OPEN')
+    setAccessFilter('ALL')
     setTeamSizeRange([1, 11])
     setMaxTeams('10')
-    setUnlimitedTeams(false)
+    setUnlimitedTeams(true)
     setCollaboration([])
     setLocation('')
     setWeeklyHours([])
@@ -164,8 +164,8 @@ export function BrowseClient({ initialProjects, savedProjectIds, studentLimits, 
 
   useOutsideClick(modalRef, () => setActiveProject(null))
 
-  const hasActiveFilters = searchQuery || accessFilter !== 'OPEN' || teamSizeRange[0] !== 1 || 
-    teamSizeRange[1] !== 11 || (maxTeams !== '10' && !unlimitedTeams) || unlimitedTeams || 
+  const hasActiveFilters = searchQuery || accessFilter !== 'ALL' || teamSizeRange[0] !== 1 || 
+    teamSizeRange[1] !== 11 || (maxTeams !== '10' && !unlimitedTeams) || !unlimitedTeams || 
     collaboration.length > 0 || location || weeklyHours.length > 0
 
   // Add is_saved flag to projects
@@ -228,6 +228,7 @@ export function BrowseClient({ initialProjects, savedProjectIds, studentLimits, 
                   <SelectValue placeholder="Access" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">All projects</SelectItem>
                   <SelectItem value="OPEN">Open access</SelectItem>
                   <SelectItem value="CLOSED">Closed access</SelectItem>
                 </SelectContent>

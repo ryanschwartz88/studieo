@@ -114,6 +114,18 @@ export const createProjectSchema = z.object({
   contact_email: z.string().email('Valid email is required'),
   confidentiality: z.enum(CONFIDENTIALITY_OPTIONS),
 
+  // Step 7: Screening Questions
+  custom_questions: z
+    .array(
+      z.object({
+        id: z.string(),
+        question: z.string().min(5, 'Question must be at least 5 characters'),
+        required: z.boolean().default(false),
+      })
+    )
+    .optional()
+    .default([]),
+
   // Optional tags
   tags: z.array(z.string()).optional(),
 })
@@ -135,10 +147,16 @@ export const createProjectSchema = z.object({
     message: 'Location is required for Hybrid or In-person collaboration',
     path: ['location'],
   });
-   // Note: open_date validation is handled conditionally in server actions
-   // based on project status (only for INCOMPLETE or SCHEDULED)
+// Note: open_date validation is handled conditionally in server actions
+// based on project status (only for INCOMPLETE or SCHEDULED)
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
+export type CustomQuestion = {
+  id: string;
+  question: string;
+  required: boolean;
+};
 
 // Helper type for form state (includes additional UI state)
 export type ProjectFormState = CreateProjectInput & {

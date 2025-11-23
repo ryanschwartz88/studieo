@@ -40,7 +40,7 @@ export function ProjectCard({ project, onClick, onBookmarkToggle, layoutId }: Pr
         <motion.div
           layoutId={`header-${layoutId}`}
           className="p-6 relative rounded-xl mb-4 flex-1 flex flex-col"
-          style={{ backgroundColor: pastelColor }}
+          style={{ background: pastelColor }}
         >
           {/* Date badge and bookmark inline */}
           <div className="mb-6 flex items-center justify-between gap-2">

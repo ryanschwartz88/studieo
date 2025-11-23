@@ -65,7 +65,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
           <motion.div
             layoutId={`header-${layoutId}`}
             className="p-8 relative"
-            style={{ backgroundColor: pastelColor }}
+            style={{ background: pastelColor }}
           >
             <div className="flex flex-col items-center gap-4">
               <motion.div layoutId={`avatar-${layoutId}`}>

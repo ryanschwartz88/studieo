@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { X, Users, Building2, Calendar, Clock, Lock, MapPin, Link as LinkIcon, FileText, ExternalLink, Bookmark, Upload, AlertCircle, ArrowLeft, Maximize2, Minimize2, HelpCircle, FileQuestion } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { X, Users, Building2, Calendar, Clock, Lock, MapPin, Link as LinkIcon, FileText, ExternalLink, Bookmark, Upload, AlertCircle, ArrowLeft, Maximize2, Minimize2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ResourceLinks } from "@/app/company/projects/[id]/_components/ResourceLinks"
@@ -70,6 +72,9 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
   const [designDoc, setDesignDoc] = useState<File | null>(null)
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [pdfFullscreen, setPdfFullscreen] = useState(false)
+
+  // Custom Answers
+  const [answers, setAnswers] = useState<Record<string, string>>({})
 
   const handleAddMember = (student: Student) => {
     // Prevent duplicates
@@ -140,6 +145,13 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
       toast.error(`Team cannot exceed ${maxTeam} members`)
       return
     }
+
+    // Validate custom questions
+    const missingRequired = project.custom_questions?.filter(q => q.required && !answers[q.id]?.trim())
+    if (missingRequired && missingRequired.length > 0) {
+      toast.error(`Please answer all required questions`)
+      return
+    }
     
     startTransition(async () => {
       // Filter out current user from team members (they're automatically the lead)
@@ -147,10 +159,16 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
         .filter(m => !m.isCurrentUser)
         .map(m => m.id)
       
+      const formattedAnswers = Object.entries(answers).map(([question_id, answer]) => ({
+        question_id,
+        answer
+      }))
+
       const result = await createApplication(
         project.id,
         teamMemberIds,
-        designDoc || undefined
+        designDoc || undefined,
+        formattedAnswers
       )
       
       if (result.success) {
@@ -225,7 +243,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
             <motion.div
               layoutId={`header-${layoutId}`}
                   className="p-8 relative flex-shrink-0"
-              style={{ backgroundColor: pastelColor }}
+              style={{ background: pastelColor }}
             >
               <div className="flex flex-col items-center gap-4">
                 <motion.div layoutId={`avatar-${layoutId}`}>
@@ -414,7 +432,49 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                           <ResourceFiles files={project.resource_files} projectId={project.id} />
                         </div>
                       )}
-                    </div>
+                  </div>
+                </motion.div>
+                </>
+              )}
+
+              {/* Custom Questions */}
+              {project.custom_questions && project.custom_questions.length > 0 && (
+                <>
+                  <Separator />
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                  >
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4" />
+                      Screening Questions
+                    </h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      You'll be asked to answer these questions when applying
+                    </p>
+                    <Accordion type="single" collapsible className="w-full">
+                      {project.custom_questions.map((question, index) => (
+                        <AccordionItem key={question.id} value={question.id}>
+                          <AccordionTrigger className="text-left text-sm">
+                            <div className="flex items-start gap-2 flex-1">
+                              <span className="flex-shrink-0 text-muted-foreground">#{index + 1}</span>
+                              <span className="flex-1">{question.question}</span>
+                              {question.required && (
+                                <Badge variant="secondary" className="text-xs ml-2">Required</Badge>
+                              )}
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="p-3 rounded-lg bg-muted/30 border border-dashed">
+                              <p className="text-xs text-muted-foreground italic">
+                                Answer this question during the application process
+                              </p>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
                   </motion.div>
                 </>
               )}
@@ -446,7 +506,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
             ) : (
               <>
                 {/* Apply Form Header */}
-                <div className="px-6 pt-6 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0">
+                <div className="px-6 pt-6 pb-4 flex-shrink-0">
                   {/* Back button above title */}
                   <button
                     onClick={() => {
@@ -478,9 +538,12 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                     </p>
                   </div>
                 </div>
+                
 
                 {/* Apply Form Content */}
                 <ScrollArea className="flex-1 px-6 overflow-y-auto">
+                  <Separator />
+                  
                   <div className="py-6 space-y-6">
                     {/* Limits warning */}
                     {!studentLimits.canApply && (
@@ -538,6 +601,47 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                         </p>
                       )}
                     </div>
+
+                    <Separator />
+
+                    {/* Custom Questions */}
+                    {project.custom_questions && project.custom_questions.length > 0 && (
+                      <div className="space-y-3">
+                        <Label className="flex items-center gap-2">
+                          <FileQuestion className="h-4 w-4" />
+                          Screening Questions
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Please answer the following questions from the company</p>
+                        
+                        <div className="p-1">
+                          <Accordion type="single" collapsible className="w-full">
+                            {project.custom_questions.map((question) => (
+                              <AccordionItem key={question.id} value={question.id}>
+                                <AccordionTrigger className="text-left">
+                                  <div className="flex items-start gap-2">
+                                    <span className="flex-1">{question.question}</span>
+                                    {question.required && (
+                                      <Badge variant="secondary" className="text-xs">Required</Badge>
+                                    )}
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-1 pt-1">
+                                  <Textarea
+                                    value={answers[question.id] || ''}
+                                    onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
+                                    placeholder="Type your answer here..."
+                                    required={question.required}
+                                    className="min-h-[100px]"
+                                    rows={4}
+                                  />
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                        </div>
+                      </div>
+                    )}
+                    <Separator />
 
                     {/* PDF upload */}
                     <div className="space-y-3">

@@ -37,7 +37,7 @@ export function ProjectCard({ project, onClick, layoutId }: ProjectCardProps) {
         <motion.div
           layoutId={`header-${layoutId}`}
           className="p-6 relative rounded-xl mb-4 flex-1 flex flex-col"
-          style={{ backgroundColor: pastelColor }}
+          style={{ background: pastelColor }}
         >
           {/* Date badge - top left with white pill background */}
           <div className="mb-6">

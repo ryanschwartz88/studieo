@@ -28,6 +28,11 @@ export type Project = {
     logo_url: string | null
   } | null
   is_saved?: boolean
+  custom_questions: {
+    id: string
+    question: string
+    required: boolean
+  }[] | null
 }
 
 export type FilterParams = {

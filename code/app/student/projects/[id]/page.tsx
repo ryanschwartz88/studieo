@@ -45,6 +45,7 @@ type Project = {
   company_id: string | null
   location: string | null
   view_count: number | null
+  custom_questions?: { id: string; question: string; required: boolean }[] | null
 }
 
 function formatDate(d: string | null | undefined) {
@@ -115,7 +116,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
         'max_teams','skills_needed','collaboration_style',
         'mentorship','start_date','end_date','resource_links','resource_files',
         'contact_name','contact_role','contact_email','confidentiality','status','company_id',
-        'location','view_count',
+        'location','view_count','custom_questions',
       ].join(',')
     )
     .eq('id', id)
@@ -142,6 +143,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
       created_at, 
       submitted_at,
       design_doc_url,
+      answers,
       team_members(
         student_id,
         is_lead,
@@ -167,6 +169,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
         created_at,
         submitted_at,
         design_doc_url,
+        answers,
         project_id,
         team_members(
           student_id,
@@ -261,6 +264,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                 title: project.title,
                 min_students: project.min_students,
                 max_students: project.max_students,
+                custom_questions: project.custom_questions,
               }} 
               studentLimits={studentLimits}
               currentUser={currentUser}
@@ -326,6 +330,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                   application={existingApplication as any}
                   currentUserId={user.id}
                   projectTitle={project.title || 'Project'}
+                  customQuestions={project.custom_questions}
                 />
               </div>
             </div>
@@ -353,6 +358,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                   application={existingApplication as any}
                   currentUserId={user.id}
                   projectTitle={project.title || 'Project'}
+                  customQuestions={project.custom_questions}
                 />
               </div>
             </div>
@@ -376,6 +382,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                   application={existingApplication as any}
                   currentUserId={user.id}
                   projectTitle={project.title || 'Project'}
+                  customQuestions={project.custom_questions}
                 />
               </div>
             </div>
@@ -399,6 +406,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
                   application={existingApplication as any}
                   currentUserId={user.id}
                   projectTitle={project.title || 'Project'}
+                  customQuestions={project.custom_questions}
                 />
               </div>
             </div>

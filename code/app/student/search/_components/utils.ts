@@ -5,23 +5,30 @@
  * Returns theme-aware colors that are easy on the eyes in both light and dark modes
  */
 export function getPastelColor(companyId: string, isDark: boolean = false): string {
-  // Light mode pastels (original)
-  const lightColors = ['#D6F6ED', '#FFE2CB', '#E2DBFA', '#E0F3FF', '#FBE2F3']
-  // Dark mode pastels (improved visibility - lighter, more saturated but still muted)
-  const darkColors = [
-    '#0F4A3A', // Teal - darker but visible
-    '#4A2E1A', // Orange-brown
-    '#3A2E4A', // Purple
-    '#1A2E4A', // Blue
-    '#4A1A2E'  // Pink
+  // Light mode gradients (soft, pastel, top-left to bottom-right)
+  const lightGradients = [
+    'linear-gradient(135deg, #D6F6ED 0%, #E0F3FF 100%)', // Mint to Blue
+    'linear-gradient(135deg, #FFE2CB 0%, #FBE2F3 100%)', // Peach to Pink
+    'linear-gradient(135deg, #E2DBFA 0%, #E0F3FF 100%)', // Lavender to Blue
+    'linear-gradient(135deg, #E0F3FF 0%, #D6F6ED 100%)', // Blue to Mint
+    'linear-gradient(135deg, #FBE2F3 0%, #E2DBFA 100%)'  // Pink to Lavender
   ]
-  
+
+  // Dark mode gradients (richer, deeper, top-left to bottom-right)
+  const darkGradients = [
+    'linear-gradient(135deg, #0F4A3A 0%, #1A2E4A 100%)', // Teal to Blue
+    'linear-gradient(135deg, #4A2E1A 0%, #4A1A2E 100%)', // Orange-brown to Pink
+    'linear-gradient(135deg, #3A2E4A 0%, #1A2E4A 100%)', // Purple to Blue
+    'linear-gradient(135deg, #1A2E4A 0%, #0F4A3A 100%)', // Blue to Teal
+    'linear-gradient(135deg, #4A1A2E 0%, #3A2E4A 100%)'  // Pink to Purple
+  ]
+
   let hash = 0
   for (const char of companyId) {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0
   }
-  const index = hash % lightColors.length
-  return isDark ? darkColors[index] : lightColors[index]
+  const index = hash % lightGradients.length
+  return isDark ? darkGradients[index] : lightGradients[index]
 }
 
 /**

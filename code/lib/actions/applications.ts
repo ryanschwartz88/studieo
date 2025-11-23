@@ -43,11 +43,11 @@ export async function checkStudentLimits(userId?: string) {
   const activeApplications = activeApplicationsCount ?? 0
 
   const errors: string[] = []
-  
+
   if (activeProjects >= 3) {
     errors.push('You have reached the maximum of 3 active projects')
   }
-  
+
   if (activeApplications >= 20) {
     errors.push('You have reached the maximum of 20 active applications')
   }
@@ -63,13 +63,14 @@ export async function checkStudentLimits(userId?: string) {
 export async function createApplication(
   projectId: string,
   teamMemberIds: string[],
-  designDocFile?: File
-) {
+  designDocFile?: File,
+  answers?: { question_id: string; answer: string }[]
+): Promise<{ success: boolean; error?: string; applicationId?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return { success: false, error: 'Not authenticated' }
+    return { success: false, error: 'User not authenticated' }
   }
 
   // Check limits
@@ -123,6 +124,7 @@ export async function createApplication(
       project_id: projectId,
       team_lead_id: user.id,
       status: 'PENDING',
+      answers: answers || [],
     })
     .select('id')
     .single()
@@ -523,7 +525,7 @@ export async function withdrawApplication(applicationId: string) {
   // Send notification emails to team members
   const project = application.projects as any
   const teamMembers = application.team_members as any[]
-  
+
   if (teamMembers && teamMembers.length > 0) {
     const { data: teamLeadData } = await supabase
       .from('users')
@@ -535,7 +537,7 @@ export async function withdrawApplication(applicationId: string) {
 
     // Import and send withdrawal emails
     const { sendApplicationWithdrawn } = await import('@/lib/email/templates')
-    
+
     Promise.all(
       teamMembers
         .filter(member => member.student_id !== user.id) // Don't email the lead
@@ -801,4 +803,80 @@ export async function getDesignDocUrl(applicationId: string) {
   }
 
   return { success: true, url: signedUrlData.signedUrl }
+}
+
+export async function deleteApplication(applicationId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // Get application and project details
+  const { data: application } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      project_id,
+      design_doc_url,
+      projects(
+        title,
+        company_id,
+        companies(name)
+      )
+    `)
+    .eq('id', applicationId)
+    .single()
+
+  if (!application) {
+    return { success: false, error: 'Application not found' }
+  }
+
+  const project = application.projects as any
+  const company = project?.companies as any
+
+  // Verify user is from the company
+  const { data: userData } = await supabase
+    .from('users')
+    .select('company_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (userData?.role !== 'COMPANY' || userData?.company_id !== project.company_id) {
+    return { success: false, error: 'Only company members can delete applications' }
+  }
+
+  // Get design doc path before deleting
+  const designDocUrl = application.design_doc_url
+
+  // Delete the application (cascade will delete team_members)
+  const { error: deleteError } = await supabase
+    .from('applications')
+    .delete()
+    .eq('id', applicationId)
+
+  if (deleteError) {
+    return { success: false, error: deleteError.message }
+  }
+
+  // Delete design doc from storage if exists
+  if (designDocUrl) {
+    const filePath = designDocUrl.replace('design_docs/', '')
+    await supabase.storage
+      .from('design_docs')
+      .remove([filePath])
+      .catch(error => {
+        console.error('Failed to delete design doc:', error)
+      })
+  }
+
+  // We could send emails here, but deletion usually implies removal without notification or "hard delete".
+  // If the user wants to reject, they should use reject. Delete is for cleanup.
+
+  revalidatePath('/company/dashboard')
+  revalidatePath(`/company/projects/${application.project_id}`)
+  revalidatePath('/student/dashboard')
+
+  return { success: true }
 }

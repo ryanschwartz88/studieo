@@ -36,10 +36,11 @@ export default async function StudentBrowsePage({ searchParams }: StudentBrowseP
   }
   
   // Prepare filter parameters
-  const access = (params.access || 'OPEN').toUpperCase() as 'OPEN' | 'CLOSED' | null
+  const accessParam = params.access?.toUpperCase()
+  const access = (accessParam === 'OPEN' || accessParam === 'CLOSED') ? accessParam : null
   const teamMin = params.teamMin ? Number(params.teamMin) : 1
   const teamMax = params.teamMax ? Number(params.teamMax) : 11
-  const maxTeams = params.unlimited !== 'true' && params.maxTeams ? Number(params.maxTeams) : null
+  const maxTeams = params.unlimited === 'false' && params.maxTeams ? Number(params.maxTeams) : null
   const collaboration = params.collab ? params.collab.split(',').filter(Boolean) : null
   const hours = params.hours ? params.hours.split(',').filter(Boolean) : null
   const sort = params.sort || 'updated_desc'
@@ -51,11 +52,11 @@ export default async function StudentBrowsePage({ searchParams }: StudentBrowseP
   const { data: projects, error } = await supabase.rpc('search_projects', {
     search_query: params.q || null,
     project_status_filter: 'ACCEPTING',
-    access_type_filter: (access === 'OPEN' || access === 'CLOSED') ? access : null,
+    access_type_filter: access,
     team_min_filter: teamMin,
     team_max_filter: teamMax,
     max_teams_filter: maxTeams,
-    unlimited_teams: params.unlimited === 'true',
+    unlimited_teams: params.unlimited !== 'false',
     collaboration_filter: collaboration,
     location_filter: params.location || null,
     hours_filter: hours,
@@ -97,6 +98,7 @@ export default async function StudentBrowsePage({ searchParams }: StudentBrowseP
     location: p.location,
     resource_links: p.resource_links,
     resource_files: p.resource_files,
+    custom_questions: p.custom_questions,
     view_count: p.view_count,
     companies: {
       name: p.company_name,

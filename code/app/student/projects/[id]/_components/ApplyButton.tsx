@@ -11,6 +11,7 @@ interface ApplyButtonProps {
     title: string | null
     min_students: number | null
     max_students: number | null
+    custom_questions?: { id: string; question: string; required: boolean }[] | null
   }
   studentLimits: StudentLimits
   currentUser: {
@@ -44,4 +45,3 @@ export function ApplyButton({ project, studentLimits, currentUser }: ApplyButton
     </>
   )
 }
-

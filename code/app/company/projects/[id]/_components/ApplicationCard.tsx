@@ -7,12 +7,13 @@ import { Users, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { ApplicationDetailModal } from './ApplicationDetailModal'
 import { useState } from 'react'
 
-type Application = {
+export type Application = {
   id: string
   status: 'PENDING' | 'SUBMITTED' | 'ACCEPTED' | 'REJECTED'
   created_at: string
   submitted_at: string | null
   design_doc_url: string | null
+  answers?: { question_id: string; answer: string }[]
   team_members: {
     student_id: string
     is_lead: boolean
@@ -24,6 +25,8 @@ type Application = {
       student_profiles: {
         grad_date: string | null
         resume_url: string | null
+        interests: string[] | null
+        description: string | null
       } | null
     }
   }[]
