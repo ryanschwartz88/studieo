@@ -89,7 +89,7 @@ export default async function CompanyLayout({
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link href="/company/dashboard">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <div className="flex aspect-square size-6 items-center justify-center rounded-lg">
                     <Image
                       src="/Studieo Logo/Icon-Light.svg"
                       alt="Studieo"
@@ -107,9 +107,9 @@ export default async function CompanyLayout({
                       className="hidden dark:block"
                     />
                   </div>
-                  <div className="grid flex-1 text-left text-lg font-semibold leading-tight uppercase">
-                    <span className="truncate font-semibold">Studieo</span>
-                  </div>
+                  <div className="flex flex-1 items-end text-left text-xl font-bold leading-tight uppercase">
+                    <span className="truncate font-bold" style={{ letterSpacing: '0.15em' }}>Studieo</span>
+                  </div> 
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

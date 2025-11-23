@@ -3,7 +3,9 @@
 import { sendEmail, getBaseUrl } from './index'
 
 // Email template wrapper for consistent styling
-function emailTemplate(content: string) {
+function emailTemplate(content: string, baseUrl: string) {
+  const logoUrl = `${baseUrl}/Studieo%20Logo/Full%20Logo.svg`
+
   return `
     <!DOCTYPE html>
     <html>
@@ -11,32 +13,49 @@ function emailTemplate(content: string) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Studieo</title>
+        <!--[if mso]>
+        <style type="text/css">
+          body, table, td {font-family: Arial, Helvetica, sans-serif !important;}
+        </style>
+        <![endif]-->
       </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f5f5f5; color: #171717;">
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f5f5f5; padding: 40px 20px;">
           <tr>
             <td align="center">
-              <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); overflow: hidden;">
+                <!-- Header with Logo -->
+                <tr>
+                  <td style="padding: 32px 40px; background-color: #ffffff; border-bottom: 1px solid #f5f5f5; text-align: center;">
+                    <img src="${logoUrl}" alt="Studieo" width="120" style="display: block; margin: 0 auto; max-width: 100%; height: auto; border: 0;">
+                  </td>
+                </tr>
+                
+                <!-- Content -->
                 <tr>
                   <td style="padding: 40px;">
-                    <!-- Logo -->
-                    <div style="text-align: center; margin-bottom: 32px;">
-                      <h1 style="color: #000; font-size: 28px; font-weight: 700; margin: 0;">Studieo</h1>
-                    </div>
-                    
-                    <!-- Content -->
                     ${content}
-                    
-                    <!-- Footer -->
-                    <div style="margin-top: 40px; padding-top: 32px; border-top: 1px solid #e5e5e5; text-align: center;">
-                      <p style="color: #737373; font-size: 14px; margin: 0;">
-                        © ${new Date().getFullYear()} Studieo. All rights reserved.
-                      </p>
-                      <p style="color: #a3a3a3; font-size: 12px; margin: 8px 0 0 0;">
-                        You received this email because you're part of the Studieo platform.
-                      </p>
-                    </div>
                   </td>
+                </tr>
+                    
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #fafafa; padding: 32px 40px; border-top: 1px solid #f5f5f5; text-align: center;">
+                    <p style="color: #737373; font-size: 14px; margin: 0; font-weight: 500;">
+                      © ${new Date().getFullYear()} Studieo. All rights reserved.
+                    </p>
+                    <p style="color: #a3a3a3; font-size: 12px; margin: 12px 0 0 0; line-height: 1.5;">
+                      You received this email because you're part of the Studieo platform.<br>
+                      <a href="${baseUrl}" style="color: #a3a3a3; text-decoration: underline;">Visit Website</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Spacer -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td height="40" style="font-size: 0; line-height: 0;">&nbsp;</td>
                 </tr>
               </table>
             </td>
@@ -52,7 +71,7 @@ function emailButton(text: string, url: string, variant: 'primary' | 'secondary'
   const bgColor = variant === 'primary' ? '#000' : '#ffffff'
   const textColor = variant === 'primary' ? '#ffffff' : '#000'
   const borderColor = variant === 'secondary' ? '#e5e5e5' : 'transparent'
-  
+
   return `
     <table cellpadding="0" cellspacing="0" border="0" style="margin: 24px 0;">
       <tr>
@@ -78,7 +97,7 @@ export async function sendTeamInvite(params: {
   applicationId: string
 }) {
   const baseUrl = await getBaseUrl()
-  
+
   // Fetch project_id from application
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
@@ -87,10 +106,10 @@ export async function sendTeamInvite(params: {
     .select('project_id')
     .eq('id', params.applicationId)
     .single()
-  
+
   const projectId = application?.project_id
   const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
-  
+
   const content = `
     <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
       You've been invited to join a team!
@@ -114,11 +133,11 @@ export async function sendTeamInvite(params: {
       <strong>Note:</strong> The team lead may submit the application before you confirm. You'll be able to confirm your participation after submission.
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `You've been invited to join a team for ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -137,7 +156,7 @@ export async function sendApplicationSubmitted(params: {
   needsConfirmation: boolean
 }) {
   const baseUrl = await getBaseUrl()
-  
+
   // Fetch project_id from application
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
@@ -146,45 +165,45 @@ export async function sendApplicationSubmitted(params: {
     .select('project_id')
     .eq('id', params.applicationId)
     .single()
-  
+
   const projectId = application?.project_id
   const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
-  
-  const confirmationText = params.needsConfirmation 
+
+  const confirmationText = params.needsConfirmation
     ? `
-      <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0;">
+      <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
         <p style="color: #92400e; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
           Action Required
         </p>
-        <p style="color: #78350f; font-size: 14px; line-height: 20px; margin: 0;">
+        <p style="color: #b45309; font-size: 14px; line-height: 20px; margin: 0;">
           Please confirm your participation in this application. If you don't want to participate, you can decline and the application will be disbanded.
         </p>
       </div>
       ${emailButton('Confirm Participation', applicationUrl)}
     `
     : ''
-  
+
   const content = `
-    <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       ${params.isLead ? 'Application Submitted!' : 'Team Application Submitted'}
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.toName},
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
-      ${params.isLead 
-        ? 'Your application has been successfully submitted!' 
-        : `${params.teamLeadName} has submitted the team application.`
-      }
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
+      ${params.isLead
+      ? 'Your application has been successfully submitted!'
+      : `${params.teamLeadName} has submitted the team application.`
+    }
     </p>
-    <div style="background-color: #f5f5f5; border-left: 4px solid #000; padding: 16px; margin: 24px 0;">
-      <p style="color: #737373; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">
+    <div style="background-color: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px; padding: 24px; margin: 24px 0;">
+      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">
         PROJECT
       </p>
-      <p style="color: #000; font-size: 18px; font-weight: 600; margin: 0 0 12px 0;">
+      <p style="color: #171717; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">
         ${params.projectTitle}
       </p>
-      <p style="color: #737373; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">
+      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">
         COMPANY
       </p>
       <p style="color: #525252; font-size: 16px; margin: 0;">
@@ -197,11 +216,11 @@ export async function sendApplicationSubmitted(params: {
       The company will review your application and you'll be notified of their decision.
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `Application submitted: ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -220,7 +239,7 @@ export async function sendApplicationAccepted(params: {
   applicationId: string
 }) {
   const baseUrl = await getBaseUrl()
-  
+
   // Fetch project_id from application
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
@@ -229,44 +248,44 @@ export async function sendApplicationAccepted(params: {
     .select('project_id')
     .eq('id', params.applicationId)
     .single()
-  
+
   const projectId = application?.project_id
   const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
-  
+
   const content = `
-    <h2 style="color: #16a34a; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #16a34a; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       🎉 Congratulations! Your application was accepted!
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.toName},
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Great news! <strong>${params.companyName}</strong> has accepted your team's application for:
     </p>
-    <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin: 24px 0;">
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0;">
       <p style="color: #15803d; font-size: 18px; font-weight: 600; margin: 0;">
         ${params.projectTitle}
       </p>
     </div>
     
-    <h3 style="color: #000; font-size: 18px; font-weight: 600; margin: 32px 0 16px 0;">
+    <h3 style="color: #171717; font-size: 18px; font-weight: 600; margin: 32px 0 16px 0;">
       Next Steps
     </h3>
     <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
       Please reach out to your company contact to coordinate the project kickoff:
     </p>
-    <div style="background-color: #f5f5f5; padding: 16px; border-radius: 6px; margin: 16px 0;">
-      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+    <div style="background-color: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid #e5e5e5; margin: 16px 0;">
+      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">
         Contact Person
       </p>
-      <p style="color: #000; font-size: 16px; font-weight: 600; margin: 0 0 4px 0;">
+      <p style="color: #171717; font-size: 16px; font-weight: 600; margin: 0 0 4px 0;">
         ${params.contactName}
       </p>
       <p style="color: #525252; font-size: 14px; margin: 0 0 8px 0;">
         ${params.contactRole}
       </p>
       <p style="color: #737373; font-size: 14px; margin: 0;">
-        <a href="mailto:${params.contactEmail}" style="color: #000; text-decoration: underline;">
+        <a href="mailto:${params.contactEmail}" style="color: #171717; text-decoration: underline; font-weight: 500;">
           ${params.contactEmail}
         </a>
       </p>
@@ -276,11 +295,11 @@ export async function sendApplicationAccepted(params: {
       Best of luck with your project! We're excited to see what you'll build together.
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `🎉 Accepted: ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -296,21 +315,21 @@ export async function sendApplicationRejected(params: {
 }) {
   const baseUrl = await getBaseUrl()
   const browseUrl = `${baseUrl}/student/search`
-  
+
   const content = `
-    <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       Application Update
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.toName},
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Thank you for applying to <strong>${params.projectTitle}</strong> at ${params.companyName}.
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Unfortunately, your team's application was not selected for this project. This decision was based on the specific needs of the project and does not reflect on your team's capabilities.
     </p>
-    <div style="background-color: #f5f5f5; border-left: 4px solid #737373; padding: 16px; margin: 24px 0;">
+    <div style="background-color: #fafafa; border-left: 4px solid #737373; padding: 16px; margin: 24px 0;">
       <p style="color: #525252; font-size: 14px; line-height: 20px; margin: 0;">
         Don't be discouraged! There are many other exciting projects on Studieo waiting for talented students like you.
       </p>
@@ -320,11 +339,11 @@ export async function sendApplicationRejected(params: {
       Keep applying and best of luck with your next application!
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `Application update: ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -342,31 +361,31 @@ export async function sendNewApplication(params: {
 }) {
   const baseUrl = await getBaseUrl()
   const projectUrl = `${baseUrl}/projects/${params.projectId}`
-  
+
   const content = `
-    <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       New Application Received
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.companyName} team,
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       A new team has applied to your project!
     </p>
-    <div style="background-color: #f5f5f5; border-left: 4px solid #000; padding: 16px; margin: 24px 0;">
-      <p style="color: #737373; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">
+    <div style="background-color: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px; padding: 24px; margin: 24px 0;">
+      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">
         PROJECT
       </p>
-      <p style="color: #000; font-size: 18px; font-weight: 600; margin: 0 0 12px 0;">
+      <p style="color: #171717; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">
         ${params.projectTitle}
       </p>
-      <p style="color: #737373; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">
+      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">
         TEAM LEAD
       </p>
-      <p style="color: #525252; font-size: 16px; margin: 0 0 12px 0;">
+      <p style="color: #525252; font-size: 16px; margin: 0 0 16px 0;">
         ${params.teamLeadName}
       </p>
-      <p style="color: #737373; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">
+      <p style="color: #737373; font-size: 12px; font-weight: 600; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">
         TEAM SIZE
       </p>
       <p style="color: #525252; font-size: 16px; margin: 0;">
@@ -378,11 +397,11 @@ export async function sendNewApplication(params: {
       Review their application, including team member profiles and design document, to make your decision.
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `New application for ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -399,19 +418,19 @@ export async function sendApplicationDisbanded(params: {
 }) {
   const baseUrl = await getBaseUrl()
   const browseUrl = `${baseUrl}/student/search`
-  
+
   const content = `
-    <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       Application Disbanded
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.toName},
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
-      ${params.isDeclinedBy 
-        ? `You have declined participation in the application for <strong>${params.projectTitle}</strong>. The application has been disbanded.`
-        : `<strong>${params.declinedByName}</strong> has declined participation in your team application for <strong>${params.projectTitle}</strong>. The application has been disbanded.`
-      }
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
+      ${params.isDeclinedBy
+      ? `You have declined participation in the application for <strong>${params.projectTitle}</strong>. The application has been disbanded.`
+      : `<strong>${params.declinedByName}</strong> has declined participation in your team application for <strong>${params.projectTitle}</strong>. The application has been disbanded.`
+    }
     </p>
     <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0;">
       <p style="color: #991b1b; font-size: 14px; line-height: 20px; margin: 0;">
@@ -420,17 +439,17 @@ export async function sendApplicationDisbanded(params: {
     </div>
     ${emailButton('Browse Projects', browseUrl)}
     <p style="color: #737373; font-size: 14px; line-height: 20px; margin: 24px 0 0 0;">
-      ${params.isDeclinedBy 
-        ? 'You can browse other projects that match your interests.'
-        : 'Consider applying again with a new team configuration.'
-      }
+      ${params.isDeclinedBy
+      ? 'You can browse other projects that match your interests.'
+      : 'Consider applying again with a new team configuration.'
+    }
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `Application disbanded: ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -446,7 +465,7 @@ export async function sendTeamMemberConfirmed(params: {
   applicationId: string
 }) {
   const baseUrl = await getBaseUrl()
-  
+
   // Fetch project_id from application
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
@@ -455,21 +474,21 @@ export async function sendTeamMemberConfirmed(params: {
     .select('project_id')
     .eq('id', params.applicationId)
     .single()
-  
+
   const projectId = application?.project_id
   const applicationUrl = projectId ? `${baseUrl}/student/projects/${projectId}` : `${baseUrl}/student/dashboard`
-  
+
   const content = `
-    <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       Team Member Confirmed
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.teamLeadName},
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       <strong>${params.memberName}</strong> has confirmed their participation in your application for:
     </p>
-    <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin: 24px 0;">
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0;">
       <p style="color: #15803d; font-size: 18px; font-weight: 600; margin: 0;">
         ${params.projectTitle}
       </p>
@@ -479,11 +498,11 @@ export async function sendTeamMemberConfirmed(params: {
       Your team is one step closer to being ready! You'll be notified when all members have confirmed.
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `Team member confirmed for ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
 
@@ -499,15 +518,15 @@ export async function sendApplicationWithdrawn(params: {
 }) {
   const baseUrl = await getBaseUrl()
   const browseUrl = `${baseUrl}/student/search`
-  
+
   const content = `
-    <h2 style="color: #000; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
       Application Withdrawn
     </h2>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       Hi ${params.toName},
     </p>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       <strong>${params.teamLeadName}</strong> has withdrawn the application for:
     </p>
     <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0;">
@@ -515,7 +534,7 @@ export async function sendApplicationWithdrawn(params: {
         ${params.projectTitle}
       </p>
     </div>
-    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
       The application has been cancelled and removed from the system. You can continue browsing other projects or join a different team.
     </p>
     ${emailButton('Browse Projects', browseUrl)}
@@ -523,11 +542,10 @@ export async function sendApplicationWithdrawn(params: {
       Keep exploring opportunities that match your interests!
     </p>
   `
-  
+
   return await sendEmail({
     to: params.toEmail,
     subject: `Application withdrawn: ${params.projectTitle}`,
-    html: emailTemplate(content),
+    html: emailTemplate(content, baseUrl),
   })
 }
-
