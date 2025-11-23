@@ -47,6 +47,11 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // If user is not logged in and trying to access root, rewrite to Framer landing page
+  if (request.nextUrl.pathname === "/" && !user) {
+    return NextResponse.rewrite(new URL("https://studieo.com"));
+  }
+
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&

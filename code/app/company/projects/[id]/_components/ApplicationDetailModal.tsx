@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -174,62 +174,16 @@ export function ApplicationDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle>Application Details</DialogTitle>
           <DialogDescription>
             Review the team's application and members
           </DialogDescription>
         </DialogHeader>
 
-        {application.status === 'SUBMITTED' && (
-          <div className="flex gap-2 -mt-2 pb-4 border-b">
-            <Button
-              onClick={handleAccept}
-              disabled={isPending}
-              variant="outline"
-              size="sm"
-              className="border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/50"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-1.5" />
-              Accept
-            </Button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isPending}
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
-                >
-                  <XCircle className="h-4 w-4 mr-1.5" />
-                  Reject
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reject Application?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will notify all team members that their application was not selected.
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                      onClick={handleReject}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {isPending ? 'Rejecting...' : 'Reject Application'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
-
-        <div className="space-y-6 mt-4">
+        <div className="flex-1 overflow-y-auto p-6 pt-2">
+          <div className="space-y-6">
           {/* Status & Timeline */}
           <div className="flex items-center justify-between">
             <div>
@@ -390,6 +344,50 @@ export function ApplicationDetailModal({
           )}
 
         </div>
+        </div>
+
+        {application.status === 'SUBMITTED' && (
+          <DialogFooter className="p-6 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-row justify-between sm:justify-between">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={isPending}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reject Application?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will notify all team members that their application was not selected.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleReject}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isPending ? 'Rejecting...' : 'Reject Application'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Button
+              onClick={handleAccept}
+              disabled={isPending}
+              className="min-w-[100px]"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Accept
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

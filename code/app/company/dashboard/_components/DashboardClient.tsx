@@ -83,7 +83,6 @@ export function DashboardClient({
                       mass={0.8}
                       stiffness={75}
                       damping={15}
-                      decimals={item.decimals ?? 0}
                     />
                     {item.suffix && <span>{item.suffix}</span>}
                   </span>

@@ -156,12 +156,10 @@ export async function uploadResourceFiles(files: File[], projectId?: string) {
   const maxSize = 10 * 1024 * 1024; // 10MB per file
   const uploadedUrls: string[] = [];
 
-  for (const file of files) {
+  // Parallelize uploads
+  const uploadPromises = files.map(async (file) => {
     if (file.size > maxSize) {
-      return {
-        success: false,
-        error: `File ${file.name} exceeds 10MB limit`
-      };
+      throw new Error(`File ${file.name} exceeds 10MB limit`);
     }
 
     // Generate unique filename
@@ -180,13 +178,20 @@ export async function uploadResourceFiles(files: File[], projectId?: string) {
 
     if (uploadError) {
       console.error('File upload error:', uploadError);
-      return {
-        success: false,
-        error: `Failed to upload ${file.name}`
-      };
+      throw new Error(`Failed to upload ${file.name}`);
     }
 
-    uploadedUrls.push(`project_resources/${filePath}`);
+    return `project_resources/${filePath}`;
+  });
+
+  try {
+    const results = await Promise.all(uploadPromises);
+    uploadedUrls.push(...results);
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to upload files'
+    };
   }
 
   // If project ID provided, update project with file URLs

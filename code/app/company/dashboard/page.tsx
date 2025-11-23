@@ -48,45 +48,70 @@ export default async function CompanyDashboardPage() {
     )
   }
 
-  // Fetch all company projects with view counts
-  const { data: allProjects } = await supabase
+  // 1. Get active projects count
+  const { count: activeProjectsCount } = await supabase
     .from('projects')
-    .select('id, status, view_count')
+    .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .in('status', ['ACCEPTING', 'IN_PROGRESS'])
+
+  const activeProjects = activeProjectsCount || 0
+
+  // 2. Get total views across all projects
+  // We can use a sum aggregation if we had a function, but for now we'll fetch just the view_count column
+  // which is much lighter than fetching all columns.
+  const { data: projectViews } = await supabase
+    .from('projects')
+    .select('view_count')
     .eq('company_id', companyId)
 
-  const projectIds = (allProjects || []).map((p) => p.id)
-  const activeProjects = allProjects?.filter(
-    (p) => p.status === 'ACCEPTING' || p.status === 'IN_PROGRESS'
-  ).length || 0
+  const totalViews = projectViews?.reduce((sum, p) => sum + (p.view_count || 0), 0) || 0
 
-  // Calculate total views across all projects
-  const totalViews = allProjects?.reduce((sum, p) => sum + (p.view_count || 0), 0) || 0
-
-  // Fetch all applications to company's projects
-  let allApplications: any[] = []
-  let pendingApplications = 0
+  // 3. Get project IDs for application queries
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('company_id', companyId)
   
+  const projectIds = projects?.map(p => p.id) || []
+
+  let pendingApplications = 0
+  let viewToApplyRate = 0
+  let chartData: any[] = []
+  let newApplications: any[] = []
+
   if (projectIds.length > 0) {
-    const { data: applications } = await supabase
+    // 4. Get pending applications count
+    const { count: pendingCount } = await supabase
       .from('applications')
-      .select('id, created_at, status')
+      .select('*', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+      .eq('status', 'SUBMITTED')
+    
+    pendingApplications = pendingCount || 0
+
+    // 5. Get total applications count for rate calculation
+    const { count: totalAppsCount } = await supabase
+      .from('applications')
+      .select('*', { count: 'exact', head: true })
       .in('project_id', projectIds)
 
-    allApplications = applications || []
-    pendingApplications = applications?.filter((a) => a.status === 'SUBMITTED').length || 0
-  }
+    viewToApplyRate = totalViews > 0 ? ((totalAppsCount || 0) / totalViews) * 100 : 0
 
-  // Calculate view-to-apply rate (percentage of views that resulted in applications)
-  const totalApplications = allApplications.length
-  const viewToApplyRate = totalViews > 0 ? (totalApplications / totalViews) * 100 : 0
+    // 6. Get applications for chart (last 90 days only)
+    const ninetyDaysAgo = new Date()
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+    
+    const { data: recentApplications } = await supabase
+      .from('applications')
+      .select('created_at, status')
+      .in('project_id', projectIds)
+      .gte('created_at', ninetyDaysAgo.toISOString())
 
-  // Aggregate applications data for chart (last 90 days)
-  const chartData = aggregateApplicationsByDate(allApplications, 90)
+    // Aggregate applications data for chart
+    chartData = aggregateApplicationsByDate(recentApplications || [], 90)
 
-  // Fetch recent SUBMITTED applications with details
-  let newApplications: any[] = []
-  
-  if (projectIds.length > 0) {
+    // 7. Fetch recent SUBMITTED applications with details (limit 10)
     const { data: recentApps } = await supabase
       .from('applications')
       .select(`

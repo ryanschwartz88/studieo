@@ -165,7 +165,7 @@ export function ApplicationsChart({ data }: ApplicationsChartProps) {
             />
             <Area
               dataKey="applications"
-              type="natural"
+              type="monotone"
               fill="url(#fillApplications)"
               stroke="var(--color-applications)"
               strokeWidth={2}
