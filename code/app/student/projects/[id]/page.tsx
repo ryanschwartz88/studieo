@@ -55,6 +55,20 @@ function formatDate(d: string | null | undefined) {
   return date.toLocaleDateString()
 }
 
+function getConfidentialityLabel(type: string | null) {
+  if (!type) return '—'
+  switch (type) {
+    case 'CONFIDENTIAL_NO_NDA':
+      return 'Confidential - No NDA Required'
+    case 'PUBLIC':
+      return 'Public - Portfolio Ready'
+    case 'NDA_REQUIRED':
+      return 'Strictly Confidential - NDA Required'
+    default:
+      return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase().replace(/_/g, ' ')
+  }
+}
+
 export default async function StudentProjectPage({ params }: ProjectPageProps) {
   const supabase = await createClient()
   const { id } = await params
@@ -559,9 +573,7 @@ export default async function StudentProjectPage({ params }: ProjectPageProps) {
             <div className="pt-3 border-t">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Confidentiality</div>
               <div className="font-medium">
-                {project.confidentiality
-                  ? project.confidentiality.charAt(0).toUpperCase() + project.confidentiality.slice(1).toLowerCase().replace('_', ' ')
-                  : '—'}
+                {getConfidentialityLabel(project.confidentiality)}
               </div>
             </div>
           </div>

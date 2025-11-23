@@ -67,6 +67,20 @@ function getDurationText(start: string | null, end: string | null) {
   return `${weeks} wk${weeks > 1 ? 's' : ''}`
 }
 
+function getConfidentialityLabel(type: string | null) {
+  if (!type) return '—'
+  switch (type) {
+    case 'CONFIDENTIAL_NO_NDA':
+      return 'Confidential - No NDA Required'
+    case 'PUBLIC':
+      return 'Public - Portfolio Ready'
+    case 'NDA_REQUIRED':
+      return 'Strictly Confidential - NDA Required'
+    default:
+      return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase().replace(/_/g, ' ')
+  }
+}
+
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const supabase = await createClient()
   const { id } = await params
@@ -360,9 +374,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             <div>
               <div className="text-muted-foreground">Confidentiality</div>
               <div className="font-medium">
-                {project.confidentiality
-                  ? project.confidentiality.charAt(0).toUpperCase() + project.confidentiality.slice(1).toLowerCase()
-                  : '—'}
+                {getConfidentialityLabel(project.confidentiality)}
               </div>
             </div>
             {isOwnProject && (
