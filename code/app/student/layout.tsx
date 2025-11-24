@@ -284,7 +284,7 @@ export default async function StudentLayout({
                   <DropdownMenuItem asChild>
                     <Link href="/student/profile" className="flex items-center gap-2">
                       <User className="text-muted-foreground" size={16} />
-                      <span>Account</span>
+                      <span>Profile</span>
                     </Link>
                   </DropdownMenuItem>
                   <ThemeSwitcher />
