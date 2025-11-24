@@ -293,7 +293,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         
         {/* Details (Fixed: simple grid without nested Cards) */}
         <BentoModalItem className="md:col-span-2" icon={<Users className="h-4 w-4" />} title="Details">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-1">
             {/* Team Size */}
             <div className="group p-3 rounded-lg border border-neutral-200 dark:border-white/[0.2] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md">
               <div className="text-xs text-muted-foreground mb-1">Team Size</div>

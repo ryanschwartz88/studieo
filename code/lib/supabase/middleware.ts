@@ -7,14 +7,35 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // If the env vars are not set, skip middleware check. You can remove this
-  // once you setup the project.
+  // If the env vars are not set, skip middleware check.
   if (!hasEnvVars) {
     return supabaseResponse;
   }
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+  // 1. Define App Routes (paths handled by Next.js)
+  const isAppRoute =
+    request.nextUrl.pathname.startsWith('/student') ||
+    request.nextUrl.pathname.startsWith('/company') ||
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname.startsWith('/api') ||
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/static') ||
+    request.nextUrl.pathname === '/favicon.ico';
+
+  // 2. Handle Framer Proxy for Non-App Routes
+  if (!isAppRoute) {
+    const framerUrl = process.env.FRAMER_URL;
+
+    // Only rewrite if FRAMER_URL is defined
+    if (framerUrl) {
+      const url = request.nextUrl.clone();
+      // Construct the target URL
+      const targetUrl = new URL(url.pathname, framerUrl);
+      return NextResponse.rewrite(targetUrl);
+    }
+  }
+
+  // 3. Supabase Auth Logic (Only runs for App Routes or if no Framer URL)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -38,44 +59,20 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // If user is not logged in and trying to access root, rewrite to Framer landing page
-  if (request.nextUrl.pathname === "/" && !user) {
-    return NextResponse.rewrite(new URL("https://studieo.com"));
-  }
-
+  // Protect App Routes: Redirect unauthenticated users to login
   if (
-    request.nextUrl.pathname !== "/" &&
+    isAppRoute &&
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/api") // Optional: allow public APIs
   ) {
-    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
 
   return supabaseResponse;
 }
