@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   description: "A launchpad for real-world innovation, connecting elite student teams from top universities with forward-thinking companies to build what matters.",
   icons: {
     icon: [
-      { url: "/Studieo Logo/Favicon-Light.svg", media: "(prefers-color-scheme: light)" },
-      { url: "/Studieo Logo/Favicon-Dark.svg", media: "(prefers-color-scheme: dark)" },
+      { url: "/Studieo Logo/Icon-Light.svg", media: "(prefers-color-scheme: light)" },
+      { url: "/Studieo Logo/Icon-Dark.svg", media: "(prefers-color-scheme: dark)" },
     ],
     apple: [
       { url: "/Studieo Logo/Icon-Light.svg", media: "(prefers-color-scheme: light)" },
