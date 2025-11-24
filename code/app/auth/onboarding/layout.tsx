@@ -4,10 +4,10 @@ import { redirect } from 'next/navigation';
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   await requireEmailVerified();
   
-  // If onboarding is already complete, redirect to student browse
+  // If onboarding is already complete, redirect to student dashboard
   const { complete } = await getOnboardingStatus();
   if (complete) {
-    redirect('/student/search');
+    redirect('/student/dashboard');
   }
   
   return <>{children}</>;

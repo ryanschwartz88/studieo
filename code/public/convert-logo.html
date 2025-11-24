@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SVG to PNG Converter - Studieo Logo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #171717;
+    }
+    .preview {
+      background: #fafafa;
+      padding: 40px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 20px 0;
+      border: 2px dashed #e5e5e5;
+    }
+    canvas {
+      border: 1px solid #e5e5e5;
+      background: white;
+    }
+    button {
+      background: #000;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #333;
+    }
+    .instructions {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .success {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 4px;
+      display: none;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Convert Studieo Logo to PNG</h1>
+    
+    <div class="instructions">
+      <strong>Instructions:</strong>
+      <ol>
+        <li>The logo will load automatically from your public folder</li>
+        <li>Click "Download PNG (1x)" for standard resolution</li>
+        <li>Click "Download PNG (2x)" for retina/high-DPI displays (recommended for email)</li>
+        <li>Upload the PNG to Supabase Storage</li>
+      </ol>
+    </div>
+
+    <div class="preview">
+      <p><strong>Preview:</strong></p>
+      <img id="svgPreview" style="max-width: 100%; height: auto; margin: 20px 0;" />
+      <br>
+      <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+
+    <div style="text-align: center;">
+      <button onclick="downloadPNG(1)">Download PNG (1x) - 120px</button>
+      <button onclick="downloadPNG(2)">Download PNG (2x) - 240px (Recommended)</button>
+    </div>
+
+    <div class="success" id="success">
+      <strong>✅ Success!</strong> PNG downloaded. Now:
+      <ol>
+        <li>Go to Supabase Dashboard → Storage</li>
+        <li>Create a public bucket called <code>email-assets</code></li>
+        <li>Upload the PNG file</li>
+        <li>Copy the public URL</li>
+        <li>Update <code>lib/email/generate-supabase-templates.ts</code> with the URL</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    const svgPath = '/Studieo Logo/Full Logo.svg';
+    const targetWidth = 120; // Base width for email
+    
+    // Load SVG
+    fetch(svgPath)
+      .then(response => response.text())
+      .then(svgText => {
+        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        
+        const img = document.getElementById('svgPreview');
+        img.src = url;
+        img.onload = () => {
+          console.log('SVG loaded successfully');
+        };
+      })
+      .catch(error => {
+        console.error('Error loading SVG:', error);
+        alert('Could not load SVG. Make sure the dev server is running.');
+      });
+
+    function downloadPNG(scale) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      fetch(svgPath)
+        .then(response => response.text())
+        .then(svgText => {
+          const blob = new Blob([svgText], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          
+          img.onload = function() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate dimensions
+            const width = targetWidth * scale;
+            const aspectRatio = img.height / img.width;
+            const height = width * aspectRatio;
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw white background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw SVG
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convert to PNG and download
+            canvas.toBlob(function(blob) {
+              const link = document.createElement('a');
+              link.download = `studieo-logo-${scale}x.png`;
+              link.href = URL.createObjectURL(blob);
+              link.click();
+              
+              // Show success message
+              document.getElementById('success').style.display = 'block';
+              
+              // Cleanup
+              URL.revokeObjectURL(url);
+            }, 'image/png');
+          };
+          
+          img.src = url;
+        })
+        .catch(error => {
+          console.error('Error converting to PNG:', error);
+          alert('Error converting to PNG. Check console for details.');
+        });
+    }
+  </script>
+</body>
+</html>

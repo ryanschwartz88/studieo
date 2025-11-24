@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { completeOnboarding, uploadResume } from '@/lib/actions/students';
 import { INTEREST_OPTIONS } from '@/lib/schemas/auth';
-import { Upload, CheckCircle2, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle2, ArrowRight, ArrowLeft, Loader2, Plus, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/animate-ui/components/radix/progress';
 import { FocusCards } from '@/components/ui/focus-cards';
@@ -28,6 +29,7 @@ export default function OnboardingPage() {
   // Form state
   const [gradDate, setGradDate] = useState<Date | undefined>(undefined);
   const [interests, setInterests] = useState<string[]>([]);
+  const [customInterestInput, setCustomInterestInput] = useState('');
   const [bio, setBio] = useState('');
   const [resume, setResume] = useState<File | null>(null);
 
@@ -106,6 +108,37 @@ export default function OnboardingPage() {
         setInterests([...interests, interest]);
       }
     }
+  }
+
+  function removeInterest(interest: string) {
+    setInterests(interests.filter(i => i !== interest));
+  }
+
+  function addCustomInterest() {
+    const trimmed = customInterestInput.trim();
+    
+    // Validation
+    if (!trimmed) return;
+    if (trimmed.length < 2 || trimmed.length > 30) {
+      setError('Interest must be between 2 and 30 characters');
+      return;
+    }
+    if (!/^[a-zA-Z0-9\s\-&/]+$/.test(trimmed)) {
+      setError('Interest can only contain letters, numbers, spaces, hyphens, and &/');
+      return;
+    }
+    if (interests.some(i => i.toLowerCase() === trimmed.toLowerCase())) {
+      setError('This interest has already been added');
+      return;
+    }
+    if (interests.length >= 10) {
+      setError('Maximum 10 interests allowed');
+      return;
+    }
+
+    setInterests([...interests, trimmed]);
+    setCustomInterestInput('');
+    setError(null);
   }
 
   function canProceed() {
@@ -315,6 +348,8 @@ export default function OnboardingPage() {
                     Select 1-10 areas you're passionate about ({interests.length}/10 selected)
                   </p>
                 </div>
+
+                {/* Suggested Interests */}
                 <div className="flex flex-wrap gap-2 justify-center">
                   {INTEREST_OPTIONS.map((interest) => (
                     <Badge
@@ -324,6 +359,10 @@ export default function OnboardingPage() {
                         interests.includes(interest)
                           ? 'bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90'
                           : 'hover:border-foreground'
+                      } ${
+                        interests.length >= 10 && !interests.includes(interest)
+                          ? 'opacity-50 cursor-not-allowed'
+                          : ''
                       }`}
                       onClick={() => toggleInterest(interest)}
                       data-testid={`interest-${interest.toLowerCase().replace(/\s+/g, '-')}`}
@@ -331,6 +370,65 @@ export default function OnboardingPage() {
                       {interest}
                     </Badge>
                   ))}
+                </div>
+
+                {/* Custom Interest Input */}
+                <div className="space-y-2 max-w-md mx-auto">
+                  <Label htmlFor="custom-interest">Add Custom Interest</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="custom-interest"
+                      value={customInterestInput}
+                      onChange={(e) => setCustomInterestInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCustomInterest();
+                        }
+                      }}
+                      placeholder="e.g., Blockchain, Game Design..."
+                      disabled={interests.length >= 10}
+                      className="flex-1"
+                      maxLength={30}
+                    />
+                    <Button
+                      type="button"
+                      onClick={addCustomInterest}
+                      disabled={interests.length >= 10 || !customInterestInput.trim()}
+                      variant="outline"
+                      size="icon"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    2-30 characters, letters, numbers, spaces, hyphens, and &/ allowed
+                  </p>
+                </div>
+
+                {/* Selected Interests Display */}
+                <div className="p-4 rounded-lg border bg-muted/50 space-y-2 max-w-2xl mx-auto">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Selected Interests ({interests.length}/10)</Label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {interests.length > 0 ? (
+                      interests.map((interest) => (
+                        <Badge key={interest} variant="secondary" className="px-3 py-1">
+                          {interest}
+                          <button
+                            type="button"
+                            onClick={() => removeInterest(interest)}
+                            className="ml-2 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No interests selected yet</span>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}

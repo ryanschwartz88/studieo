@@ -549,3 +549,67 @@ export async function sendApplicationWithdrawn(params: {
     html: emailTemplate(content, baseUrl),
   })
 }
+
+/**
+ * Supabase Auth: Email Confirmation Template
+ * Used for new user signups - to be configured in Supabase Dashboard
+ * Note: This is exported for documentation purposes. 
+ * Copy the HTML output to Supabase Dashboard > Authentication > Email Templates
+ */
+export async function getConfirmationEmailTemplate() {
+  const baseUrl = "https://wxgdvnngwwgcrcbjwemg.supabase.co/storage/v1/object/public/email-assets/full-logo.png"
+
+  const content = `
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
+      Welcome to Studieo!
+    </h2>
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
+      Thank you for signing up! We're excited to have you join our community of students and companies collaborating on real-world projects.
+    </p>
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
+      To get started, please confirm your email address by clicking the button below:
+    </p>
+    ${emailButton('Confirm Your Email', '{{ .ConfirmationURL }}')}
+    <p style="color: #737373; font-size: 14px; line-height: 20px; margin: 24px 0 0 0;">
+      If you didn't create an account with Studieo, you can safely ignore this email.
+    </p>
+    <p style="color: #737373; font-size: 14px; line-height: 20px; margin: 16px 0 0 0;">
+      This link will expire in 24 hours for security purposes.
+    </p>
+  `
+
+  return emailTemplate(content, baseUrl)
+}
+
+/**
+ * Supabase Auth: Password Reset Template
+ * Used for password reset requests - to be configured in Supabase Dashboard
+ * Note: This is exported for documentation purposes.
+ * Copy the HTML output to Supabase Dashboard > Authentication > Email Templates
+ */
+export async function getPasswordResetEmailTemplate() {
+  const baseUrl = "https://wxgdvnngwwgcrcbjwemg.supabase.co/storage/v1/object/public/email-assets/full-logo.png"
+
+  const content = `
+    <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">
+      Reset Your Password
+    </h2>
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
+      We received a request to reset the password for your Studieo account.
+    </p>
+    <p style="color: #525252; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">
+      Click the button below to create a new password:
+    </p>
+    ${emailButton('Reset Password', '{{ .ConfirmationURL }}')}
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+      <p style="color: #92400e; font-size: 14px; line-height: 20px; margin: 0;">
+        <strong>Security Notice:</strong> If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+      </p>
+    </div>
+    <p style="color: #737373; font-size: 14px; line-height: 20px; margin: 24px 0 0 0;">
+      This link will expire in 1 hour for security purposes.
+    </p>
+  `
+
+  return emailTemplate(content, baseUrl)
+}
