@@ -4,7 +4,7 @@ import { sendEmail, getBaseUrl } from './index'
 
 // Email template wrapper for consistent styling
 function emailTemplate(content: string, baseUrl: string) {
-  const logoUrl = `${baseUrl}/Studieo%20Logo/Full%20Logo.svg`
+  const logoUrl = 'https://wxgdvnngwwgcrcbjwemg.supabase.co/storage/v1/object/public/email-assets/full-logo.png'
 
   return `
     <!DOCTYPE html>
@@ -360,7 +360,7 @@ export async function sendNewApplication(params: {
   teamSize: number
 }) {
   const baseUrl = await getBaseUrl()
-  const projectUrl = `${baseUrl}/projects/${params.projectId}`
+  const projectUrl = `${baseUrl}/company/projects/${params.projectId}`
 
   const content = `
     <h2 style="color: #171717; font-size: 24px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.02em;">

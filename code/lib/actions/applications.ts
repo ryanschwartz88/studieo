@@ -437,24 +437,32 @@ export async function submitApplication(applicationId: string, isAutoSubmit: boo
   } else {
     // CLOSED project - notify company
     // Get company contact email
-    const { data: projectCreatorData } = await supabase
+    // Get company contact email
+    const { data: projectData } = await supabase
       .from('projects')
-      .select('created_by_id, users(email)')
+      .select('created_by_id')
       .eq('id', application.project_id)
       .single()
 
-    if (projectCreatorData) {
-      const creatorUser = projectCreatorData.users as any
-      sendNewApplication({
-        toEmail: creatorUser.email,
-        companyName: company.name,
-        projectTitle: project.title,
-        projectId: application.project_id,
-        teamLeadName,
-        teamSize: teamMembers.length,
-      }).catch(error => {
-        console.error('Failed to send new application email to company:', error)
-      })
+    if (projectData?.created_by_id) {
+      const { data: creatorUser } = await supabase
+        .from('users')
+        .select('email')
+        .eq('id', projectData.created_by_id)
+        .single()
+
+      if (creatorUser?.email) {
+        sendNewApplication({
+          toEmail: creatorUser.email,
+          companyName: company.name,
+          projectTitle: project.title,
+          projectId: application.project_id,
+          teamLeadName,
+          teamSize: teamMembers.length,
+        }).catch(error => {
+          console.error('Failed to send new application email to company:', error)
+        })
+      }
     }
   }
 
@@ -635,14 +643,16 @@ export async function acceptApplication(applicationId: string) {
     Promise.all(
       teamMembers.map(member => {
         const memberUser = member.users as any
+        if (!memberUser?.email) return Promise.resolve()
+
         return sendApplicationAccepted({
           toEmail: memberUser.email,
           toName: memberUser.name || 'Student',
           projectTitle: project.title,
           companyName: company.name,
-          contactName: project.contact_name,
-          contactEmail: project.contact_email,
-          contactRole: project.contact_role,
+          contactName: project.contact_name || 'Company Contact',
+          contactEmail: project.contact_email || '',
+          contactRole: project.contact_role || 'Representative',
           applicationId,
         })
       })
@@ -732,6 +742,8 @@ export async function rejectApplication(applicationId: string) {
     Promise.all(
       teamMembers.map(member => {
         const memberUser = member.users as any
+        if (!memberUser?.email) return Promise.resolve()
+
         return sendApplicationRejected({
           toEmail: memberUser.email,
           toName: memberUser.name || 'Student',

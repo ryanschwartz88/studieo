@@ -14,7 +14,7 @@ export async function sendEmail(params: {
 }) {
   try {
     const { data, error } = await resend.emails.send({
-      from: params.from || 'Studieo <noreply@studieo.com>',
+      from: params.from || 'Studieo <admin@studieo.com>',
       to: params.to,
       subject: params.subject,
       html: params.html,
@@ -28,9 +28,9 @@ export async function sendEmail(params: {
     return { success: true, data }
   } catch (error) {
     console.error('Failed to send email:', error)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }
