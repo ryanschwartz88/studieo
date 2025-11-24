@@ -32,6 +32,6 @@ export default async function HomePage() {
     }
   }
 
-  // For non-authenticated users, redirect to login
-  redirect('/auth/login');
+  // For non-authenticated users, redirect to Framer
+  redirect('/');
 }

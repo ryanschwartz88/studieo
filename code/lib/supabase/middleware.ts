@@ -12,30 +12,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // 1. Define App Routes (paths handled by Next.js)
-  const isAppRoute =
-    request.nextUrl.pathname.startsWith('/student') ||
-    request.nextUrl.pathname.startsWith('/company') ||
-    request.nextUrl.pathname.startsWith('/auth') ||
-    request.nextUrl.pathname.startsWith('/api') ||
-    request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/static') ||
-    request.nextUrl.pathname === '/favicon.ico';
-
-  // 2. Handle Framer Proxy for Non-App Routes
-  if (!isAppRoute) {
-    const framerUrl = process.env.FRAMER_URL;
-
-    // Only rewrite if FRAMER_URL is defined
-    if (framerUrl) {
-      const url = request.nextUrl.clone();
-      // Construct the target URL
-      const targetUrl = new URL(url.pathname, framerUrl);
-      return NextResponse.rewrite(targetUrl);
-    }
-  }
-
-  // 3. Supabase Auth Logic (Only runs for App Routes or if no Framer URL)
+  // Create Supabase client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -62,13 +39,15 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Protect App Routes: Redirect unauthenticated users to login
-  if (
-    isAppRoute &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/api") // Optional: allow public APIs
-  ) {
+  // Protect app routes: Redirect unauthenticated users to login
+  // (Excludes auth routes and API routes)
+  const isProtectedRoute =
+    (request.nextUrl.pathname.startsWith('/student') ||
+      request.nextUrl.pathname.startsWith('/company')) &&
+    !request.nextUrl.pathname.startsWith('/auth') &&
+    !request.nextUrl.pathname.startsWith('/api');
+
+  if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
