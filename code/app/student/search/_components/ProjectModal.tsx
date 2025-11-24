@@ -602,10 +602,10 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                       )}
                     </div>
 
-                    <Separator />
-
                     {/* Custom Questions */}
                     {project.custom_questions && project.custom_questions.length > 0 && (
+                      <>
+                      <Separator />
                       <div className="space-y-3">
                         <Label className="flex items-center gap-2">
                           <FileQuestion className="h-4 w-4" />
@@ -640,6 +640,7 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                           </Accordion>
                         </div>
                       </div>
+                      </>
                     )}
                     <Separator />
 

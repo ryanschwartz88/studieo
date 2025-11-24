@@ -253,10 +253,12 @@ export function ApplyModal({ project, studentLimits, currentUser, onClose }: App
                   </p>
                 )}
               </div>
-              <Separator />
+              
 
               {/* Custom Questions */}
               {project.custom_questions && project.custom_questions.length > 0 && (
+                <>
+                <Separator />
                 <div className="space-y-3 pt-2">
                   <Label className="flex items-center gap-2">
                     <FileQuestion className="h-4 w-4" />
@@ -291,6 +293,7 @@ export function ApplyModal({ project, studentLimits, currentUser, onClose }: App
                     </Accordion>
                   </div>
                 </div>
+                </>
               )}
               <Separator />
 
