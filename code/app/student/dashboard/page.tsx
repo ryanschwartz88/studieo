@@ -59,6 +59,7 @@ function mapProjectFromRow(row: any): Project {
       resource_files: null,
       view_count: null,
       companies: null,
+      custom_questions: null,
     }
   }
 
@@ -92,6 +93,7 @@ function mapProjectFromRow(row: any): Project {
         }
       : null,
     is_saved: row.is_saved,
+    custom_questions: row.custom_questions ?? null,
   }
 }
 

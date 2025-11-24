@@ -30,7 +30,7 @@ export function StudentSearchCombobox({
   const [isLoading, setIsLoading] = React.useState(false)
   const [showResults, setShowResults] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const debounceTimerRef = React.useRef<NodeJS.Timeout>()
+  const debounceTimerRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Fetch students from server (debounced for typing, immediate for initial load)
   const fetchStudents = React.useCallback(async (query: string, immediate = false) => {

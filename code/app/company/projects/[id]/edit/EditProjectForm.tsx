@@ -2,16 +2,18 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Plus, CheckCircle2, Upload, Calendar as CalendarIcon } from 'lucide-react'
+import { X, Plus, CheckCircle2, Upload, Calendar as CalendarIcon, GripVertical, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { Sortable, SortableItem, SortableItemHandle } from '@/components/ui/sortable'
 import { cn } from '@/lib/utils'
 import {
   PROJECT_TYPE_OPTIONS,
@@ -21,6 +23,7 @@ import {
   MENTORSHIP_OPTIONS,
   CONFIDENTIALITY_OPTIONS,
   type CreateProjectInput,
+  type CustomQuestion,
 } from '@/lib/schemas/projects'
 import { updateProjectFull, uploadResourceFiles } from '@/lib/actions/projects'
 
@@ -85,6 +88,43 @@ export default function EditProjectForm({ project }: { project: any }) {
   const [confidentiality, setConfidentiality] = useState(project.confidentiality || 'PUBLIC')
   const [internalNotes, setInternalNotes] = useState(project.internal_notes || '')
   const [location, setLocation] = useState(project.location || '')
+
+  // Custom questions state
+  const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>(project.custom_questions || [])
+  const [newQuestionInput, setNewQuestionInput] = useState('')
+
+  function addQuestion() {
+    const trimmed = newQuestionInput.trim()
+    if (!trimmed) return
+    if (trimmed.length < 5) {
+      setError('Question must be at least 5 characters')
+      return
+    }
+    const newQuestion: CustomQuestion = {
+      id: `q-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      question: trimmed,
+      required: false,
+    }
+    setCustomQuestions([...customQuestions, newQuestion])
+    setNewQuestionInput('')
+    setError(null)
+  }
+
+  function removeQuestion(id: string) {
+    setCustomQuestions(customQuestions.filter((q) => q.id !== id))
+  }
+
+  function toggleQuestionRequired(id: string) {
+    setCustomQuestions(
+      customQuestions.map((q) =>
+        q.id === id ? { ...q, required: !q.required } : q
+      )
+    )
+  }
+
+  function handleQuestionsReorder(reorderedQuestions: CustomQuestion[]) {
+    setCustomQuestions(reorderedQuestions)
+  }
 
   function toggleProjectType(type: string) {
     if (projectTypes.includes(type)) {
@@ -217,6 +257,7 @@ export default function EditProjectForm({ project }: { project: any }) {
           contact_role: contactRole,
           contact_email: contactEmail,
           confidentiality: confidentiality as any,
+          custom_questions: customQuestions,
           tags: project.tags || [],
         }
 
@@ -272,6 +313,7 @@ export default function EditProjectForm({ project }: { project: any }) {
           contact_role: contactRole,
           contact_email: contactEmail,
           confidentiality: confidentiality as any,
+          custom_questions: customQuestions,
           tags: project.tags || [],
         }
 
@@ -868,6 +910,94 @@ export default function EditProjectForm({ project }: { project: any }) {
             className="mt-2"
             rows={4}
           />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Screening Questions Section */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Screening Questions</h2>
+        <p className="text-sm text-muted-foreground">
+          Ask questions to help you evaluate applicants. You can mark them as required and reorder them.
+        </p>
+
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              value={newQuestionInput}
+              onChange={(e) => setNewQuestionInput(e.target.value)}
+              placeholder="e.g., Why are you interested in this project?"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addQuestion()
+                }
+              }}
+              className="flex-1"
+            />
+            <Button 
+              type="button"
+              onClick={addQuestion} 
+              disabled={!newQuestionInput.trim()}
+              variant="outline"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            {customQuestions.length === 0 ? (
+              <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
+                No questions added yet. Add screening questions to learn more about applicants.
+              </div>
+            ) : (
+              <Sortable
+                value={customQuestions}
+                onValueChange={handleQuestionsReorder}
+                getItemValue={(item) => item.id}
+                className="space-y-2"
+              >
+                {customQuestions.map((question) => (
+                  <SortableItem key={question.id} value={question.id}>
+                    <div className="flex items-center gap-3 p-3 bg-muted/30 border rounded-lg hover:bg-muted/50 hover:border-foreground/20 transition-colors group">
+                      <SortableItemHandle>
+                        <GripVertical className="h-4 w-4 text-muted-foreground/70 hover:text-foreground transition-colors cursor-grab active:cursor-grabbing" />
+                      </SortableItemHandle>
+                      
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{question.question}</p>
+                      </div>
+
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`required-${question.id}`}
+                            checked={question.required}
+                            onCheckedChange={() => toggleQuestionRequired(question.id)}
+                          />
+                          <Label htmlFor={`required-${question.id}`} className="text-xs cursor-pointer">
+                            Required
+                          </Label>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeQuestion(question.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </SortableItem>
+                ))}
+              </Sortable>
+            )}
+          </div>
         </div>
       </div>
 
