@@ -1,7 +1,7 @@
 import { requireAuth, requireRole, requireOnboarding } from '@/lib/supabase/auth-helpers';
 import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarRail } from '@/components/ui/sidebar';
-import { ChevronsUpDown, LogOut } from 'lucide-react';
+import { ChevronsUpDown, LogOut, User } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { ProjectsMenu } from './_components/ProjectsMenu';
 import { ApplicationsMenu } from './_components/ApplicationsMenu';
@@ -282,7 +282,10 @@ export default async function StudentLayout({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/student/profile">Account</Link>
+                    <Link href="/student/profile" className="flex items-center gap-2">
+                      <User className="text-muted-foreground" size={16} />
+                      <span>Account</span>
+                    </Link>
                   </DropdownMenuItem>
                   <ThemeSwitcher />
                   <DropdownMenuSeparator />

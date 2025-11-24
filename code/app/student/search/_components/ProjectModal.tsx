@@ -241,7 +241,6 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
               <>
             {/* Hero section with pastel background */}
             <motion.div
-              layoutId={`header-${layoutId}`}
                   className="p-8 relative flex-shrink-0"
               style={{ background: pastelColor }}
             >

@@ -38,7 +38,6 @@ export function ProjectCard({ project, onClick, onBookmarkToggle, layoutId }: Pr
       <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 bg-white dark:bg-neutral-900 p-4 flex flex-col border border-neutral-200 dark:border-neutral-800 relative">
         {/* Pastel section */}
         <motion.div
-          layoutId={`header-${layoutId}`}
           className="p-6 relative rounded-xl mb-4 flex-1 flex flex-col"
           style={{ background: pastelColor }}
         >

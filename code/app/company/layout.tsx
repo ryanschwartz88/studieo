@@ -1,7 +1,7 @@
 import { requireAuth, requireRole } from '@/lib/supabase/auth-helpers';
 import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarRail, SidebarGroup } from '@/components/ui/sidebar';
-import { ChevronsUpDown, LogOut } from 'lucide-react';
+import { ChevronsUpDown, LogOut, User } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { ProjectsMenu } from './_components/ProjectsMenu';
 import { NavigationButtons } from './_components/NavigationButtons';
@@ -149,7 +149,10 @@ export default async function CompanyLayout({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/company/settings">Account</Link>
+                    <Link href="/company/settings" className="flex items-center gap-2">
+                      <User className="text-muted-foreground" size={16} />
+                      <span>Profile</span>
+                    </Link>
                   </DropdownMenuItem>
                   <ThemeSwitcher />
                   <DropdownMenuSeparator />
