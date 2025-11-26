@@ -328,7 +328,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <div className="text-xs text-muted-foreground mb-1">Access</div>
               <div className="text-lg font-medium">
                 {project.access_type
-                  ? project.access_type.charAt(0).toUpperCase() + project.access_type.slice(1).toLowerCase()
+                  ? (project.access_type === 'CLOSED' ? 'Selective' : project.access_type.charAt(0).toUpperCase() + project.access_type.slice(1).toLowerCase())
                   : '—'}
               </div>
             </div>

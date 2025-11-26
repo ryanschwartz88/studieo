@@ -160,7 +160,9 @@ export const ProjectModal = forwardRef<HTMLDivElement, ProjectModalProps>(
                     <Lock className="h-4 w-4" />
                     <span className="font-medium">Access</span>
                   </div>
-                  <p className="text-sm pl-6 capitalize">{project.access_type.toLowerCase()}</p>
+                  <p className="text-sm pl-6 capitalize">
+                    {project.access_type === 'CLOSED' ? 'Selective' : project.access_type.toLowerCase()}
+                  </p>
                 </div>
               )}
 

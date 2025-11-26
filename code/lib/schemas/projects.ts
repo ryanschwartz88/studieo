@@ -220,13 +220,13 @@ export const CONFIDENTIALITY_LABELS = {
 export const ACCESS_TYPE_LABELS = {
   OPEN: {
     title: 'Open Project',
-    description: 'Students can join and work independently',
+    description: 'Students can join instantly and begin contributing without company review',
     icon: 'Users',
     recommended: true,
   },
   CLOSED: {
-    title: 'Closed Project',
-    description: 'Review applications before students can start',
+    title: 'Selective Project',
+    description: 'Company reviews and approves each application before students can start',
     icon: 'UserCheck',
     recommended: false,
   },

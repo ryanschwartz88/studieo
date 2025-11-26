@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Loader2, Upload, X, Globe, Eye, Lock, Users, UserCheck, Building2, Infinity, Clock, Calendar as CalendarIcon, Coffee, Briefcase, Zap, Timer, Monitor, Home, Building, Lightbulb, FileText, Sparkles, Mail, Plus, ChevronDown, GripVertical, Trash2, FileQuestion } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -416,25 +417,85 @@ export default function NewProjectPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 'overview':
-        return title.length >= 5 && shortSummary.length >= 20 && projectTypes.length >= 1;
+        return true; // Validated in handleNext
       case 'details':
-        return detailedDescription.length >= 100 && deliverables.length >= 50;
+        return true; // Validated in handleNext with toast
       case 'team':
         return minStudents[0] <= maxStudents[0];
       case 'skills':
-        return skillsNeeded.length >= 1 && collaborationStyle !== '';
+        return true; // Validated in handleNext
       case 'timeline':
-        return startDate && endDate && endDate >= startDate;
+        return true; // Validated in handleNext
       case 'questions':
         return true; // Optional step
       case 'contact':
-        return contactName.length >= 2 && contactRole.length >= 2 && contactEmail.includes('@');
+        return true; // Validated in handleSubmit
       default:
         return false;
     }
   };
 
   const handleNext = () => {
+    // Validation for overview step
+    if (currentStep === 'overview') {
+      if (title.length < 5) {
+        toast.error(`Title must be at least 5 characters (currently ${title.length})`);
+        return;
+      }
+      if (shortSummary.length < 20) {
+        toast.error(`Summary must be at least 20 characters (currently ${shortSummary.length})`);
+        return;
+      }
+      if (projectTypes.length < 1) {
+        toast.error('Please select at least one project type');
+        return;
+      }
+    }
+
+    // Validation for details step
+    if (currentStep === 'details') {
+      if (detailedDescription.length < 100) {
+        toast.error(`Description must be at least 100 characters (currently ${detailedDescription.length})`);
+        return;
+      }
+      if (deliverables.length < 50) {
+        toast.error(`Deliverables must be at least 50 characters (currently ${deliverables.length})`);
+        return;
+      }
+    }
+
+    // Validation for skills step
+    if (currentStep === 'skills') {
+      if (skillsNeeded.length < 1) {
+        toast.error('Please select at least one skill');
+        return;
+      }
+      if (!collaborationStyle) {
+        toast.error('Please select a collaboration style');
+        return;
+      }
+      if ((collaborationStyle === 'Hybrid' || collaborationStyle === 'In-person') && location.length < 2) {
+        toast.error('Please enter a valid location');
+        return;
+      }
+    }
+
+    // Validation for timeline step
+    if (currentStep === 'timeline') {
+      if (!startDate) {
+        toast.error('Please select a start date');
+        return;
+      }
+      if (!endDate) {
+        toast.error('Please select an end date');
+        return;
+      }
+      if (endDate < startDate) {
+        toast.error('End date must be after start date');
+        return;
+      }
+    }
+
     const stepOrder: Step[] = ['overview', 'details', 'team', 'skills', 'timeline', 'questions', 'contact'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex < stepOrder.length - 1) {
@@ -455,6 +516,22 @@ export default function NewProjectPage() {
     scheduledDate?: Date,
     action?: 'draft' | 'publish' | 'schedule'
   ) => {
+    // Validation for contact step
+    if (currentStep === 'contact') {
+      if (contactName.length < 2) {
+        toast.error('Contact name must be at least 2 characters');
+        return;
+      }
+      if (contactRole.length < 2) {
+        toast.error('Contact role must be at least 2 characters');
+        return;
+      }
+      if (!contactEmail.includes('@')) {
+        toast.error('Please enter a valid contact email');
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       setActionLoading(action ?? null);
@@ -845,8 +922,8 @@ export default function NewProjectPage() {
                     onClick={() => {
                       setAccessType('CLOSED');
                       setUnlimitedTeams(false);
-                      setMaxTeams(3); // Default to 3 for closed projects
-                      setMaxTeamsInput('3');
+                      setMaxTeams(5); // Default to 5 for closed projects
+                      setMaxTeamsInput('5');
                     }}
                     className={cn(
                       'relative p-5 rounded-lg border text-left transition-all',
@@ -1010,7 +1087,7 @@ export default function NewProjectPage() {
               {/* Weekly Time Commitment */}
               <div className="space-y-5">
                 <div className="space-y-1">
-                  <Label className="text-lg font-semibold">Time Commitment</Label>
+                  <Label className="text-lg font-semibold">Time Commitment (per student)</Label>
                   <p className="text-sm text-muted-foreground">
                     Expected hours per week
                   </p>

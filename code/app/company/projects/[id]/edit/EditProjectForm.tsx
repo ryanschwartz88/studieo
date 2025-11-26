@@ -19,6 +19,7 @@ import {
   PROJECT_TYPE_OPTIONS,
   SUGGESTED_SKILLS,
   PROJECT_ACCESS_TYPE,
+  ACCESS_TYPE_LABELS,
   COLLABORATION_STYLES,
   MENTORSHIP_OPTIONS,
   CONFIDENTIALITY_OPTIONS,
@@ -543,7 +544,9 @@ export default function EditProjectForm({ project }: { project: any }) {
             </SelectTrigger>
             <SelectContent>
               {PROJECT_ACCESS_TYPE.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+                <SelectItem key={t} value={t}>
+                  {ACCESS_TYPE_LABELS[t]?.title || t}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

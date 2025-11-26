@@ -176,7 +176,7 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
                   <SelectContent>
                     <SelectItem value="ALL">All projects</SelectItem>
                     <SelectItem value="OPEN">Open access</SelectItem>
-                    <SelectItem value="CLOSED">Closed access</SelectItem>
+                    <SelectItem value="CLOSED">Selective access</SelectItem>
                   </SelectContent>
                 </Select>
                 <Popover>
@@ -193,8 +193,8 @@ export function BrowseClient({ initialProjects, userCompanyId }: BrowseClientPro
                   <PopoverContent className="w-80 text-sm">
                     <div className="space-y-2">
                       <div className="font-semibold">Access types</div>
-                      <div><span className="font-medium">Open</span>: Any team can start without approval while capacity remains.</div>
-                      <div><span className="font-medium">Closed</span>: Company reviews and approves each application.</div>
+                      <div><span className="font-medium">Open</span>: Students can join instantly and begin contributing without company review.</div>
+                      <div><span className="font-medium">Selective</span>: Company reviews and approves each application.</div>
                     </div>
                   </PopoverContent>
                 </Popover>
